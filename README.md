@@ -15,7 +15,7 @@ This is a comprehensive mailing service application built with modern technologi
 
 - **Frontend**: React.js + TypeScript
 - **Backend**: Microservices architecture with Python
-- **Database**: PostgreSQL + MongoDB + Redis
+- **Backend-as-a-Service**: Supabase
 - **Email Protocols**: SMTP/IMAP servers
 - **Search**: Elasticsearch
 - **Storage**: AWS S3
@@ -29,41 +29,41 @@ This is a comprehensive mailing service application built with modern technologi
 1. **Frontend Layer** - React.js + TypeScript
 2. **Backend Services** - Microservices (Auth, User, Email, Mailbox)
 3. **Email Protocol Handlers** - SMTP/IMAP servers
-4. **Database Layer** - PostgreSQL + MongoDB + Redis
+4. **Backend-as-a-Service** - Supabase (Database, Auth, Real-time)
 5. **Storage Systems** - AWS S3 + Caching
-6. **Security & Authentication** - JWT + OAuth
-7. **Infrastructure & Scalability** - Docker + Kubernetes
+6. **Security & Authentication** - JWT + OAuth + Supabase RLS
+7. **Infrastructure & Scalability** - Traditional hosting + Supabase
 8. **Additional Features** - Search, Notifications, Analytics
 
 ## Development Phases
 
 ### Phase 1: Foundation Setup
 - [ ] Project structure and configuration
-- [ ] Database schema design
-- [ ] Basic authentication system
+- [ ] Supabase setup and database schema
+- [ ] Basic authentication system with Supabase Auth
 - [ ] Frontend setup with React + TypeScript
 
 ### Phase 2: Core Email Services
 - [ ] Email sending/receiving functionality
 - [ ] SMTP/IMAP server implementation
-- [ ] Email storage and retrieval
+- [ ] Email storage and retrieval with Supabase
 - [ ] Basic frontend email interface
 
 ### Phase 3: Advanced Features
 - [ ] Search functionality with Elasticsearch
-- [ ] Real-time notifications
+- [ ] Real-time notifications with Supabase Realtime
 - [ ] File attachment handling
 - [ ] Email threading and organization
 
 ### Phase 4: Security & Optimization
-- [ ] Security implementations
+- [ ] Security implementations with Supabase RLS
 - [ ] Performance optimization
 - [ ] Caching strategies
 - [ ] Monitoring and logging
 
 ### Phase 5: Deployment & Scaling
-- [ ] Docker containerization
-- [ ] Kubernetes deployment
+- [ ] Traditional hosting deployment
+- [ ] Supabase production setup
 - [ ] CI/CD pipeline
 - [ ] Production monitoring
 
@@ -75,22 +75,22 @@ This is a comprehensive mailing service application built with modern technologi
 - Material-UI or Tailwind CSS
 - Redux Toolkit or Zustand
 - React Query for data fetching
+- @supabase/supabase-js
 
 ### Backend
 - Python 3.11+
 - FastAPI for REST APIs
 - Celery for background tasks
 - Pydantic for data validation
-- SQLAlchemy for ORM
+- Supabase Python client
 
-### Database
-- PostgreSQL (user data, email metadata)
-- MongoDB (email content, attachments)
-- Redis (caching, sessions)
+### Backend-as-a-Service
+- Supabase (PostgreSQL database, Auth, Real-time, Storage)
+- Row Level Security (RLS)
+- Built-in authentication
+- Real-time subscriptions
 
 ### Infrastructure
-- Docker & Docker Compose
-- Kubernetes (production)
 - AWS S3 (file storage)
 - Elasticsearch (search)
 - RabbitMQ (message queue)
@@ -101,13 +101,15 @@ This is a comprehensive mailing service application built with modern technologi
 - TLS/SSL encryption
 - Rate limiting
 - Input validation
+- Supabase Row Level Security
 
 ## Quick Start
 
 1. Clone the repository
 2. Install dependencies
-3. Set up environment variables
-4. Start the development servers
+3. Set up Supabase project
+4. Configure environment variables
+5. Start the development servers
 
 ```bash
 # Clone and setup
@@ -118,8 +120,13 @@ cd gmail-clone
 npm install  # Frontend
 pip install -r requirements.txt  # Backend
 
+# Set up Supabase
+# 1. Create Supabase project at https://supabase.com
+# 2. Get your project URL and API keys
+# 3. Run the SQL scripts in docs/phase1-foundation-setup.md
+
 # Start development servers
-npm run dev  # Frontend
+npm start  # Frontend
 python -m uvicorn main:app --reload  # Backend
 ```
 
@@ -134,7 +141,6 @@ gmail-clone/
 │   ├── email_service/       # Email core service
 │   ├── mailbox_service/     # Mailbox management
 │   └── shared/              # Shared utilities
-├── infrastructure/           # Docker, K8s configs
 ├── docs/                    # Documentation
 └── scripts/                 # Setup and deployment scripts
 ```

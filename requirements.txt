@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+supabase
+redis
+celery
+pydantic
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+aiofiles
+httpx
+elasticsearch
+pika
+boto3
+python-dotenv

@@ -1,2 +1,5 @@
 docs/*
 .env
+frontend/.env
+venv
+frontend/node_modules/
