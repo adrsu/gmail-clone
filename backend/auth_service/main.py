@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -10,6 +11,15 @@ from shared.database import get_supabase
 from shared.config import settings
 
 app = FastAPI(title="Auth Service", version="1.0.0")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -56,11 +66,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 def get_user(email: str):
-    supabase = get_supabase()
-    response = supabase.table('users').select('*').eq('email', email).execute()
-    if response.data:
-        return response.data[0]
-    return None
+    try:
+        supabase = get_supabase()
+        response = supabase.table('users').select('*').eq('email', email).execute()
+        if response.data:
+            return response.data[0]
+        return None
+    except Exception as e:
+        print(f"Error connecting to database: {e}")
+        return None
 
 def authenticate_user(email: str, password: str):
     user = get_user(email)
@@ -92,7 +106,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 # API endpoints
 @app.post("/register", response_model=UserResponse)
 def register(user: UserCreate):
-    supabase = get_supabase()
+    try:
+        supabase = get_supabase()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail="Database configuration error. Please check your Supabase credentials."
+        )
     
     # Check if user already exists
     existing_user = get_user(user.email)
@@ -102,17 +122,23 @@ def register(user: UserCreate):
     hashed_password = get_password_hash(user.password)
     
     # Insert new user
-    response = supabase.table('users').insert({
-        'email': user.email,
-        'password_hash': hashed_password,
-        'first_name': user.first_name,
-        'last_name': user.last_name
-    }).execute()
-    
-    if response.data:
-        return response.data[0]
-    else:
-        raise HTTPException(status_code=500, detail="Failed to create user")
+    try:
+        response = supabase.table('users').insert({
+            'email': user.email,
+            'password_hash': hashed_password,
+            'first_name': user.first_name,
+            'last_name': user.last_name
+        }).execute()
+        
+        if response.data:
+            return response.data[0]
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create user")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(

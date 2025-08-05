@@ -9,4 +9,6 @@ def get_supabase():
         settings.SUPABASE_KEY == "your-supabase-anon-key"):
         raise Exception("Please configure Supabase credentials in your .env file")
     
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY) 
+    # Use service role key for backend operations to bypass RLS
+    service_key = settings.SUPABASE_SERVICE_KEY or settings.SUPABASE_KEY
+    return create_client(settings.SUPABASE_URL, service_key) 

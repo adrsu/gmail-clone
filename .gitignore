@@ -3,3 +3,4 @@ docs/*
 frontend/.env
 venv
 frontend/node_modules/
+scripts/*
