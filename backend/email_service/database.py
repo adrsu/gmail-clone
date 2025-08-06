@@ -3,10 +3,9 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from supabase import create_client, Client
 from .models import EmailMessage, EmailStatus, EmailPriority, EmailAddress, EmailAttachment
-from ..shared.config import get_settings
+from shared.config import settings
 
-settings = get_settings()
-supabase: Client = create_client(settings.supabase_url, settings.supabase_key)
+supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 
 class EmailDatabase:

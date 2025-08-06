@@ -5,9 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from typing import List, Optional
-from ..shared.config import get_settings
-
-settings = get_settings()
+from shared.config import settings
 
 
 class SMTPHandler:

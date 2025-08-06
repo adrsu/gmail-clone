@@ -4,9 +4,7 @@ from typing import List
 
 from .models import EmailFolder, CreateFolderRequest, UpdateFolderRequest, FolderListResponse
 from .database import MailboxDatabase
-from ..shared.config import get_settings
-
-settings = get_settings()
+from shared.config import settings
 
 app = FastAPI(title="Mailbox Service", version="1.0.0")
 

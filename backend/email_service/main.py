@@ -4,15 +4,14 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 
+# Import models from the same directory
 from .models import (
     EmailMessage, ComposeEmailRequest, EmailListRequest, 
     EmailListResponse, EmailStatus, EmailAddress
 )
 from .database import EmailDatabase
 from .smtp_handler import SMTPHandler
-from ..shared.config import get_settings
-
-settings = get_settings()
+from shared.config import settings
 
 app = FastAPI(title="Email Service", version="1.0.0")
 
