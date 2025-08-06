@@ -1,0 +1,241 @@
+from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Optional
+from datetime import datetime
+import uuid
+
+from .models import (
+    EmailMessage, ComposeEmailRequest, EmailListRequest, 
+    EmailListResponse, EmailStatus, EmailAddress
+)
+from .database import EmailDatabase
+from .smtp_handler import SMTPHandler
+from ..shared.config import get_settings
+
+settings = get_settings()
+
+app = FastAPI(title="Email Service", version="1.0.0")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize handlers
+smtp_handler = SMTPHandler()
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "email-service"}
+
+
+@app.post("/emails/compose", response_model=EmailMessage)
+async def compose_email(
+    request: ComposeEmailRequest,
+    user_id: str = Query(..., description="User ID")
+):
+    """Compose and optionally send an email"""
+    try:
+        # Parse email addresses
+        to_addresses = [EmailAddress(email=email) for email in request.to_addresses]
+        cc_addresses = [EmailAddress(email=email) for email in request.cc_addresses]
+        bcc_addresses = [EmailAddress(email=email) for email in request.bcc_addresses]
+        
+        # Get user info for from_address
+        # In a real app, you'd get this from the user service
+        from_address = EmailAddress(email=f"{user_id}@example.com", name=user_id)
+        
+        email_data = {
+            "subject": request.subject,
+            "body": request.body,
+            "html_body": request.html_body,
+            "from_address": from_address,
+            "to_addresses": to_addresses,
+            "cc_addresses": cc_addresses,
+            "bcc_addresses": bcc_addresses,
+            "status": EmailStatus.DRAFT if request.save_as_draft else EmailStatus.SENT,
+            "priority": request.priority,
+            "sent_at": datetime.utcnow() if not request.save_as_draft else None
+        }
+        
+        # Save to database
+        email = await EmailDatabase.create_email(email_data, user_id)
+        
+        # Send email if not saving as draft
+        if not request.save_as_draft:
+            success = await smtp_handler.send_email(
+                from_email=from_address.email,
+                to_emails=[addr.email for addr in to_addresses],
+                subject=request.subject,
+                body=request.body,
+                html_body=request.html_body,
+                cc_emails=[addr.email for addr in cc_addresses],
+                bcc_emails=[addr.email for addr in bcc_addresses]
+            )
+            
+            if not success:
+                # Update status back to draft if sending failed
+                await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
+                raise HTTPException(status_code=500, detail="Failed to send email")
+        
+        return email
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/emails", response_model=EmailListResponse)
+async def get_emails(
+    folder: str = Query("inbox", description="Email folder"),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    search: Optional[str] = Query(None, description="Search term"),
+    status: Optional[EmailStatus] = Query(None, description="Email status filter"),
+    is_read: Optional[bool] = Query(None, description="Read status filter"),
+    is_starred: Optional[bool] = Query(None, description="Starred status filter"),
+    user_id: str = Query(..., description="User ID")
+):
+    """Get emails with filtering and pagination"""
+    try:
+        emails = await EmailDatabase.get_emails(
+            user_id=user_id,
+            folder=folder,
+            page=page,
+            limit=limit,
+            search=search,
+            status=status,
+            is_read=is_read,
+            is_starred=is_starred
+        )
+        
+        # Get total count for pagination
+        total = await EmailDatabase.get_email_count(user_id, folder)
+        
+        return EmailListResponse(
+            emails=emails,
+            total=total,
+            page=page,
+            limit=limit,
+            has_more=(page * limit) < total
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/emails/{email_id}", response_model=EmailMessage)
+async def get_email(
+    email_id: str,
+    user_id: str = Query(..., description="User ID")
+):
+    """Get a specific email by ID"""
+    try:
+        email = await EmailDatabase.get_email_by_id(email_id, user_id)
+        if not email:
+            raise HTTPException(status_code=404, detail="Email not found")
+        
+        # Mark as read if it's not already
+        if not email.is_read:
+            await EmailDatabase.mark_as_read(email_id, user_id, True)
+            email.is_read = True
+        
+        return email
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/emails/{email_id}/read")
+async def mark_email_read(
+    email_id: str,
+    is_read: bool = Query(True, description="Mark as read or unread"),
+    user_id: str = Query(..., description="User ID")
+):
+    """Mark email as read/unread"""
+    try:
+        success = await EmailDatabase.mark_as_read(email_id, user_id, is_read)
+        if not success:
+            raise HTTPException(status_code=404, detail="Email not found")
+        
+        return {"message": f"Email marked as {'read' if is_read else 'unread'}"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/emails/{email_id}/star")
+async def toggle_email_star(
+    email_id: str,
+    user_id: str = Query(..., description="User ID")
+):
+    """Toggle email star status"""
+    try:
+        success = await EmailDatabase.toggle_star(email_id, user_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Email not found")
+        
+        return {"message": "Email star status toggled"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/emails/{email_id}")
+async def delete_email(
+    email_id: str,
+    user_id: str = Query(..., description="User ID")
+):
+    """Delete email (move to trash)"""
+    try:
+        success = await EmailDatabase.delete_email(email_id, user_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Email not found")
+        
+        return {"message": "Email moved to trash"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/emails/count/{folder}")
+async def get_email_count(
+    folder: str,
+    user_id: str = Query(..., description="User ID")
+):
+    """Get email count for a folder"""
+    try:
+        count = await EmailDatabase.get_email_count(user_id, folder)
+        return {"folder": folder, "count": count}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/emails/test-smtp")
+async def test_smtp_connection():
+    """Test SMTP connection"""
+    try:
+        success = await smtp_handler.test_connection()
+        return {"success": success, "message": "SMTP connection test completed"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8002) 

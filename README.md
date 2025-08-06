@@ -44,10 +44,10 @@ This is a comprehensive mailing service application built with modern technologi
 - [x] Frontend setup with React + TypeScript
 
 ### Phase 2: Core Email Services
-- [ ] Email sending/receiving functionality
-- [ ] SMTP/IMAP server implementation
-- [ ] Email storage and retrieval with Supabase
-- [ ] Basic frontend email interface
+- [x] Email sending/receiving functionality
+- [x] SMTP/IMAP server implementation
+- [x] Email storage and retrieval with Supabase
+- [x] Basic frontend email interface
 
 ### Phase 3: Advanced Features
 - [ ] Search functionality with Elasticsearch

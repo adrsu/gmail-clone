@@ -20,10 +20,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # Email
-    SMTP_HOST: Optional[str] = os.getenv('SMTP_HOST', 'localhost')
-    SMTP_PORT: Optional[int] = int(os.getenv('SMTP_PORT', '587'))
-    SMTP_USERNAME: Optional[str] = os.getenv('SMTP_USERNAME')
-    SMTP_PASSWORD: Optional[str] = os.getenv('SMTP_PASSWORD')
+    smtp_server: Optional[str] = os.getenv('SMTP_HOST', 'localhost')
+    smtp_port: Optional[int] = int(os.getenv('SMTP_PORT', '587'))
+    smtp_username: Optional[str] = os.getenv('SMTP_USERNAME')
+    smtp_password: Optional[str] = os.getenv('SMTP_PASSWORD')
+    smtp_use_tls: bool = os.getenv('SMTP_USE_TLS', 'true').lower() == 'true'
     
     # AWS S3
     AWS_ACCESS_KEY_ID: Optional[str] = os.getenv('AWS_ACCESS_KEY_ID')
