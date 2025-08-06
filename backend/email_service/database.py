@@ -5,7 +5,7 @@ from supabase import create_client, Client
 from .models import EmailMessage, EmailStatus, EmailPriority, EmailAddress, EmailAttachment
 from shared.config import settings
 
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
 
 class EmailDatabase:
@@ -15,16 +15,22 @@ class EmailDatabase:
         email_id = str(uuid.uuid4())
         now = datetime.utcnow()
         
+        # Convert EmailAddress objects to dictionaries for storage
+        from_address_dict = email_data["from_address"].dict() if hasattr(email_data["from_address"], 'dict') else email_data["from_address"]
+        to_addresses_dict = [addr.dict() if hasattr(addr, 'dict') else addr for addr in email_data["to_addresses"]]
+        cc_addresses_dict = [addr.dict() if hasattr(addr, 'dict') else addr for addr in email_data.get("cc_addresses", [])]
+        bcc_addresses_dict = [addr.dict() if hasattr(addr, 'dict') else addr for addr in email_data.get("bcc_addresses", [])]
+        
         email_record = {
             "id": email_id,
             "user_id": user_id,
             "subject": email_data["subject"],
             "body": email_data["body"],
             "html_body": email_data.get("html_body"),
-            "from_address": email_data["from_address"],
-            "to_addresses": email_data["to_addresses"],
-            "cc_addresses": email_data.get("cc_addresses", []),
-            "bcc_addresses": email_data.get("bcc_addresses", []),
+            "from_address": from_address_dict,
+            "to_addresses": to_addresses_dict,
+            "cc_addresses": cc_addresses_dict,
+            "bcc_addresses": bcc_addresses_dict,
             "attachments": email_data.get("attachments", []),
             "status": email_data["status"],
             "priority": email_data.get("priority", EmailPriority.NORMAL),
@@ -40,6 +46,8 @@ class EmailDatabase:
         result = supabase.table("emails").insert(email_record).execute()
         
         if result.data:
+            # Update folder counts after creating email
+            await EmailDatabase.update_folder_counts(user_id)
             return EmailMessage(**result.data[0])
         else:
             raise Exception("Failed to create email")
@@ -56,17 +64,18 @@ class EmailDatabase:
         is_starred: Optional[bool] = None
     ) -> List[EmailMessage]:
         """Get emails for a user with filtering and pagination"""
+        
         query = supabase.table("emails").select("*").eq("user_id", user_id)
         
         # Apply folder filter
         if folder == "inbox":
-            query = query.eq("status", EmailStatus.RECEIVED)
+            query = query.eq("status", EmailStatus.RECEIVED.value)
         elif folder == "sent":
-            query = query.eq("status", EmailStatus.SENT)
+            query = query.eq("status", EmailStatus.SENT.value)
         elif folder == "drafts":
-            query = query.eq("status", EmailStatus.DRAFT)
+            query = query.eq("status", EmailStatus.DRAFT.value)
         elif folder == "trash":
-            query = query.eq("status", EmailStatus.TRASH)
+            query = query.eq("status", EmailStatus.TRASH.value)
         elif folder == "starred":
             query = query.eq("is_starred", True)
         
@@ -114,7 +123,11 @@ class EmailDatabase:
             "updated_at": datetime.utcnow().isoformat()
         }).eq("id", email_id).eq("user_id", user_id).execute()
         
-        return len(result.data) > 0
+        if len(result.data) > 0:
+            # Update folder counts after status change
+            await EmailDatabase.update_folder_counts(user_id)
+            return True
+        return False
 
     @staticmethod
     async def mark_as_read(email_id: str, user_id: str, is_read: bool = True) -> bool:
@@ -147,11 +160,15 @@ class EmailDatabase:
     async def delete_email(email_id: str, user_id: str) -> bool:
         """Delete email (move to trash)"""
         result = supabase.table("emails").update({
-            "status": EmailStatus.TRASH,
+            "status": EmailStatus.TRASH.value,
             "updated_at": datetime.utcnow().isoformat()
         }).eq("id", email_id).eq("user_id", user_id).execute()
         
-        return len(result.data) > 0
+        if len(result.data) > 0:
+            # Update folder counts after moving to trash
+            await EmailDatabase.update_folder_counts(user_id)
+            return True
+        return False
 
     @staticmethod
     async def get_email_count(user_id: str, folder: str = "inbox") -> int:
@@ -159,15 +176,57 @@ class EmailDatabase:
         query = supabase.table("emails").select("id", count="exact").eq("user_id", user_id)
         
         if folder == "inbox":
-            query = query.eq("status", EmailStatus.RECEIVED)
+            query = query.eq("status", EmailStatus.RECEIVED.value)
         elif folder == "sent":
-            query = query.eq("status", EmailStatus.SENT)
+            query = query.eq("status", EmailStatus.SENT.value)
         elif folder == "drafts":
-            query = query.eq("status", EmailStatus.DRAFT)
+            query = query.eq("status", EmailStatus.DRAFT.value)
         elif folder == "trash":
-            query = query.eq("status", EmailStatus.TRASH)
+            query = query.eq("status", EmailStatus.TRASH.value)
         elif folder == "starred":
             query = query.eq("is_starred", True)
         
         result = query.execute()
-        return result.count or 0 
+        return result.count or 0
+
+    @staticmethod
+    async def update_folder_counts(user_id: str) -> bool:
+        """Update email counts for all folders"""
+        try:
+            # Get counts for each folder
+            inbox_count = await EmailDatabase.get_email_count(user_id, "inbox")
+            sent_count = await EmailDatabase.get_email_count(user_id, "sent")
+            drafts_count = await EmailDatabase.get_email_count(user_id, "drafts")
+            trash_count = await EmailDatabase.get_email_count(user_id, "trash")
+            starred_count = await EmailDatabase.get_email_count(user_id, "starred")
+            
+            # Update email_folders table
+            # First, get the folder IDs for this user
+            folders_result = supabase.table("email_folders").select("id, name").eq("user_id", user_id).execute()
+            
+            if folders_result.data:
+                for folder in folders_result.data:
+                    folder_name = folder["name"].lower()
+                    count = 0
+                    
+                    if folder_name == "inbox":
+                        count = inbox_count
+                    elif folder_name == "sent":
+                        count = sent_count
+                    elif folder_name == "drafts":
+                        count = drafts_count
+                    elif folder_name == "trash":
+                        count = trash_count
+                    elif folder_name == "starred":
+                        count = starred_count
+                    
+                    # Update the folder count
+                    supabase.table("email_folders").update({
+                        "email_count": count,
+                        "updated_at": datetime.utcnow().isoformat()
+                    }).eq("id", folder["id"]).execute()
+            
+            return True
+        except Exception as e:
+            print(f"Error updating folder counts: {e}")
+            return False 

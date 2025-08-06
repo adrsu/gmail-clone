@@ -5,7 +5,7 @@ from supabase import create_client, Client
 from .models import EmailFolder, FolderType
 from shared.config import settings
 
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
 
 class MailboxDatabase:

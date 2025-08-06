@@ -165,16 +165,15 @@ const EmailList: React.FC<EmailListProps> = ({
 
             <ListItemText
               primary={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography
-                    variant="body1"
-                    sx={{
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span
+                    style={{
                       fontWeight: email.is_read ? 'normal' : 'bold',
                       flex: 1,
                     }}
                   >
                     {formatEmailAddress(email.from_address)}
-                  </Typography>
+                  </span>
                   {email.priority !== 'normal' && (
                     <Chip
                       label={getPriorityLabel(email.priority)}
@@ -186,34 +185,39 @@ const EmailList: React.FC<EmailListProps> = ({
                   {email.attachments.length > 0 && (
                     <AttachmentIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                   )}
-                </Box>
+                </span>
               }
               secondary={
-                <Box>
-                  <Typography
-                    variant="body2"
-                    sx={{
+                <span>
+                  <span
+                    style={{
                       fontWeight: email.is_read ? 'normal' : 'bold',
-                      color: 'text.primary',
+                      color: 'inherit',
+                      display: 'block',
                     }}
                   >
                     {email.subject}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 0.5 }}
+                  </span>
+                  <span
+                    style={{
+                      marginTop: '4px',
+                      color: 'rgba(0, 0, 0, 0.6)',
+                      display: 'block',
+                    }}
                   >
                     {truncateText(email.body)}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ mt: 0.5, display: 'block' }}
+                  </span>
+                  <span
+                    style={{
+                      marginTop: '4px',
+                      fontSize: '0.75rem',
+                      color: 'rgba(0, 0, 0, 0.6)',
+                      display: 'block',
+                    }}
                   >
                     {format(new Date(email.created_at), 'MMM d, yyyy h:mm a')}
-                  </Typography>
-                </Box>
+                  </span>
+                </span>
               }
             />
 

@@ -1,5 +1,7 @@
 export const config = {
   API_BASE_URL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000',
+  EMAIL_SERVICE_URL: process.env.REACT_APP_EMAIL_SERVICE_URL || 'http://localhost:8002',
+  MAILBOX_SERVICE_URL: process.env.REACT_APP_MAILBOX_SERVICE_URL || 'http://localhost:8003',
   WS_BASE_URL: process.env.REACT_APP_WS_BASE_URL || 'ws://localhost:8000',
   STORAGE_KEY: 'gmail_clone_token',
   DEFAULT_PAGE_SIZE: 20,
@@ -20,15 +22,20 @@ export const API_ENDPOINTS = {
     SETTINGS: '/users/settings',
   },
   EMAILS: {
-    SEND: '/emails/send',
+    COMPOSE: '/emails/compose',
     LIST: '/emails',
     GET: '/emails/{id}',
     DELETE: '/emails/{id}',
     MARK_READ: '/emails/{id}/read',
+    MARK_STAR: '/emails/{id}/star',
+    COUNT: '/emails/count/{folder}',
   },
   MAILBOX: {
-    FOLDERS: '/mailbox/folders',
-    LABELS: '/mailbox/labels',
-    SEARCH: '/mailbox/search',
+    FOLDERS: '/folders',
+    INITIALIZE_FOLDERS: '/folders/initialize',
+    CREATE_FOLDER: '/folders',
+    UPDATE_FOLDER: '/folders/{id}',
+    DELETE_FOLDER: '/folders/{id}',
+    REFRESH_COUNTS: '/folders/{id}/refresh-counts',
   },
 }; 

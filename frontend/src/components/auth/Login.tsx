@@ -38,8 +38,21 @@ const Login: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
+        
+        // Get user profile using the token
+        const userResponse = await fetch(`${config.API_BASE_URL}${API_ENDPOINTS.AUTH.ME}`, {
+          headers: {
+            'Authorization': `Bearer ${data.access_token}`,
+          },
+        });
+        
+        let userData = { id: '', email, first_name: '', last_name: '', created_at: '' };
+        if (userResponse.ok) {
+          userData = await userResponse.json();
+        }
+        
         dispatch(loginSuccess({
-          user: { id: '', email, first_name: '', last_name: '', created_at: '' },
+          user: userData,
           token: data.access_token,
         }));
         navigate('/');
