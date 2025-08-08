@@ -39,7 +39,7 @@ class EmailDatabase:
             "thread_id": email_data.get("thread_id"),
             "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
-            "sent_at": email_data.get("sent_at"),
+            "sent_at": email_data.get("sent_at").isoformat() if email_data.get("sent_at") else None,
             "received_at": email_data.get("received_at")
         }
         

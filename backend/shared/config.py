@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     smtp_username: Optional[str] = os.getenv('SMTP_USERNAME')
     smtp_password: Optional[str] = os.getenv('SMTP_PASSWORD')
     smtp_use_tls: bool = os.getenv('SMTP_USE_TLS', 'true').lower() == 'true'
+    development_mode: bool = os.getenv('DEVELOPMENT_MODE', 'true').lower() == 'true'
     
     # AWS S3
     AWS_ACCESS_KEY_ID: Optional[str] = os.getenv('AWS_ACCESS_KEY_ID')

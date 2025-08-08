@@ -68,20 +68,32 @@ async def compose_email(
         
         # Send email if not saving as draft
         if not request.save_as_draft:
-            success = await smtp_handler.send_email(
-                from_email=from_address.email,
-                to_emails=[addr.email for addr in to_addresses],
-                subject=request.subject,
-                body=request.body,
-                html_body=request.html_body,
-                cc_emails=[addr.email for addr in cc_addresses],
-                bcc_emails=[addr.email for addr in bcc_addresses]
-            )
-            
-            if not success:
-                # Update status back to draft if sending failed
-                await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
-                raise HTTPException(status_code=500, detail="Failed to send email")
+            if not settings.development_mode:
+                # Production mode - actually send email via SMTP
+                try:
+                    success = await smtp_handler.send_email(
+                        from_email=from_address.email,
+                        to_emails=[addr.email for addr in to_addresses],
+                        subject=request.subject,
+                        body=request.body,
+                        html_body=request.html_body,
+                        cc_emails=[addr.email for addr in cc_addresses],
+                        bcc_emails=[addr.email for addr in bcc_addresses]
+                    )
+                    
+                    if not success:
+                        # Update status back to draft if sending failed
+                        await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
+                        raise HTTPException(status_code=500, detail="Failed to send email")
+                except Exception as e:
+                    # Update status back to draft if sending failed
+                    await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
+                    raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+            else:
+                # Development mode - skip SMTP sending, just log
+                print(f"Development mode: Email would be sent to {[addr.email for addr in to_addresses]}")
+                print(f"Subject: {request.subject}")
+                print(f"Body: {request.body[:100]}...")
         
         return email
         
