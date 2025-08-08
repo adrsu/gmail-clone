@@ -22,6 +22,7 @@ import {
   MarkEmailRead as MarkReadIcon,
   MarkEmailUnread as MarkUnreadIcon,
   AttachFile as AttachmentIcon,
+  Reply as ReplyIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 
@@ -54,6 +55,7 @@ interface EmailListProps {
   selectedEmails: string[];
   onEmailSelect: (emailId: string, selected: boolean) => void;
   onEmailClick: (email: Email) => void;
+  onReplyToEmail?: (email: Email) => void;
   onStarToggle: (emailId: string) => void;
   onDeleteEmail: (emailId: string) => void;
   onMarkAsRead: (emailId: string, isRead: boolean) => void;
@@ -65,6 +67,7 @@ const EmailList: React.FC<EmailListProps> = ({
   selectedEmails,
   onEmailSelect,
   onEmailClick,
+  onReplyToEmail,
   onStarToggle,
   onDeleteEmail,
   onMarkAsRead,
@@ -141,21 +144,22 @@ const EmailList: React.FC<EmailListProps> = ({
     <List sx={{ width: '100%', bgcolor: 'background.paper', py: 0 }}>
       {emails.map((email, index) => (
         <React.Fragment key={email.id}>
-          <ListItem
-            sx={{
-              backgroundColor: email.is_read ? 'background.paper' : '#f2f6fc',
-              '&:hover': {
-                backgroundColor: '#f8f9fa',
-                boxShadow: 'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)',
-              },
-              cursor: 'pointer',
-              px: 0,
-              py: 0,
-              minHeight: 40,
-              borderBottom: '1px solid #f1f3f4',
-            }}
-            onClick={() => onEmailClick(email)}
-          >
+          <Tooltip title={`Click to ${email.status === 'draft' ? 'edit' : 'view'} email`}>
+            <ListItem
+              sx={{
+                backgroundColor: email.is_read ? 'background.paper' : '#f2f6fc',
+                '&:hover': {
+                  backgroundColor: '#f8f9fa',
+                  boxShadow: 'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)',
+                },
+                cursor: 'pointer',
+                px: 0,
+                py: 0,
+                minHeight: 40,
+                borderBottom: '1px solid #f1f3f4',
+              }}
+              onClick={() => onEmailClick(email)}
+            >
             {/* Checkbox */}
             <Box sx={{ px: 1, display: 'flex', alignItems: 'center' }}>
               <Checkbox
@@ -225,6 +229,24 @@ const EmailList: React.FC<EmailListProps> = ({
                          flexGrow: 1,
                        }}
                      >
+                       {email.status === 'draft' && (
+                         <span style={{ 
+                           color: '#fbbc04', 
+                           fontWeight: 600,
+                           marginRight: '4px'
+                         }}>
+                           [Draft] 
+                         </span>
+                       )}
+                       {email.status === 'sent' && (
+                         <span style={{ 
+                           color: '#34a853', 
+                           fontWeight: 600,
+                           marginRight: '4px'
+                         }}>
+                           [Sent] 
+                         </span>
+                       )}
                        {email.subject} -{' '}
                        <span style={{ 
                          fontWeight: 400, 
@@ -263,6 +285,21 @@ const EmailList: React.FC<EmailListProps> = ({
               transition: 'opacity 0.2s ease-in-out',
               px: 1
             }}>
+              {onReplyToEmail && (
+                <Tooltip title="Reply">
+                  <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReplyToEmail(email);
+                    }}
+                    size="small"
+                    sx={{ color: '#5f6368' }}
+                  >
+                    <ReplyIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
+
               <Tooltip title={email.is_read ? 'Mark as unread' : 'Mark as read'}>
                 <IconButton
                   onClick={(e) => {
@@ -303,6 +340,7 @@ const EmailList: React.FC<EmailListProps> = ({
               </Tooltip>
             </Box>
           </ListItem>
+          </Tooltip>
         </React.Fragment>
       ))}
     </List>

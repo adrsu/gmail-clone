@@ -130,6 +130,43 @@ class EmailDatabase:
         return False
 
     @staticmethod
+    async def update_email(email_id: str, user_id: str, email_data: Dict[str, Any]) -> Optional[EmailMessage]:
+        """Update an existing email"""
+        now = datetime.utcnow()
+        
+        # Convert EmailAddress objects to dictionaries for storage
+        from_address_dict = email_data["from_address"].dict() if hasattr(email_data["from_address"], 'dict') else email_data["from_address"]
+        to_addresses_dict = [addr.dict() if hasattr(addr, 'dict') else addr for addr in email_data["to_addresses"]]
+        cc_addresses_dict = [addr.dict() if hasattr(addr, 'dict') else addr for addr in email_data.get("cc_addresses", [])]
+        bcc_addresses_dict = [addr.dict() if hasattr(addr, 'dict') else addr for addr in email_data.get("bcc_addresses", [])]
+        
+        update_data = {
+            "subject": email_data["subject"],
+            "body": email_data["body"],
+            "html_body": email_data.get("html_body"),
+            "from_address": from_address_dict,
+            "to_addresses": to_addresses_dict,
+            "cc_addresses": cc_addresses_dict,
+            "bcc_addresses": bcc_addresses_dict,
+            "attachments": email_data.get("attachments", []),
+            "status": email_data["status"],
+            "priority": email_data.get("priority", EmailPriority.NORMAL),
+            "updated_at": now.isoformat(),
+        }
+        
+        # Only update sent_at if the email is being sent
+        if email_data["status"] == EmailStatus.SENT:
+            update_data["sent_at"] = now.isoformat()
+        
+        result = supabase.table("emails").update(update_data).eq("id", email_id).eq("user_id", user_id).execute()
+        
+        if result.data:
+            # Update folder counts after updating email
+            await EmailDatabase.update_folder_counts(user_id)
+            return EmailMessage(**result.data[0])
+        return None
+
+    @staticmethod
     async def mark_as_read(email_id: str, user_id: str, is_read: bool = True) -> bool:
         """Mark email as read/unread"""
         result = supabase.table("emails").update({

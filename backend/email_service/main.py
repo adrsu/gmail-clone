@@ -203,6 +203,82 @@ async def toggle_email_star(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.put("/emails/{email_id}")
+async def update_email(
+    email_id: str,
+    request: ComposeEmailRequest,
+    user_id: str = Query(..., description="User ID")
+):
+    """Update an existing email"""
+    try:
+        # Check if email exists and belongs to user
+        existing_email = await EmailDatabase.get_email_by_id(email_id, user_id)
+        if not existing_email:
+            raise HTTPException(status_code=404, detail="Email not found")
+        
+        # Parse email addresses
+        to_addresses = [EmailAddress(email=email) for email in request.to_addresses]
+        cc_addresses = [EmailAddress(email=email) for email in request.cc_addresses]
+        bcc_addresses = [EmailAddress(email=email) for email in request.bcc_addresses]
+        
+        # Get user info for from_address
+        from_address = EmailAddress(email=f"{user_id}@example.com", name=user_id)
+        
+        email_data = {
+            "subject": request.subject,
+            "body": request.body,
+            "html_body": request.html_body,
+            "from_address": from_address,
+            "to_addresses": to_addresses,
+            "cc_addresses": cc_addresses,
+            "bcc_addresses": bcc_addresses,
+            "status": EmailStatus.DRAFT if request.save_as_draft else EmailStatus.SENT,
+            "priority": request.priority,
+        }
+        
+        # Update in database
+        updated_email = await EmailDatabase.update_email(email_id, user_id, email_data)
+        
+        if not updated_email:
+            raise HTTPException(status_code=500, detail="Failed to update email")
+        
+        # Send email if not saving as draft
+        if not request.save_as_draft:
+            if not settings.development_mode:
+                # Production mode - actually send email via SMTP
+                try:
+                    success = await smtp_handler.send_email(
+                        from_email=from_address.email,
+                        to_emails=[addr.email for addr in to_addresses],
+                        subject=request.subject,
+                        body=request.body,
+                        html_body=request.html_body,
+                        cc_emails=[addr.email for addr in cc_addresses],
+                        bcc_emails=[addr.email for addr in bcc_addresses]
+                    )
+                    
+                    if not success:
+                        # Update status back to draft if sending failed
+                        await EmailDatabase.update_email_status(email_id, user_id, EmailStatus.DRAFT)
+                        raise HTTPException(status_code=500, detail="Failed to send email")
+                except Exception as e:
+                    # Update status back to draft if sending failed
+                    await EmailDatabase.update_email_status(email_id, user_id, EmailStatus.DRAFT)
+                    raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+            else:
+                # Development mode - skip SMTP sending, just log
+                print(f"Development mode: Updated email would be sent to {[addr.email for addr in to_addresses]}")
+                print(f"Subject: {request.subject}")
+                print(f"Body: {request.body[:100]}...")
+        
+        return updated_email
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/emails/{email_id}")
 async def delete_email(
     email_id: str,

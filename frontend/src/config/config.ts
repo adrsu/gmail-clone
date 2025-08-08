@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
     COMPOSE: '/emails/compose',
     LIST: '/emails',
     GET: '/emails/{id}',
+    UPDATE: '/emails/{id}',
     DELETE: '/emails/{id}',
     MARK_READ: '/emails/{id}/read',
     MARK_STAR: '/emails/{id}/star',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -64,6 +64,38 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
   const [currentCc, setCurrentCc] = useState('');
   const [currentBcc, setCurrentBcc] = useState('');
   const [sending, setSending] = useState(false);
+
+  // Reset form when initialData changes (when editing an email)
+  useEffect(() => {
+    if (initialData) {
+      setEmailData({
+        subject: initialData.subject || '',
+        body: initialData.body || '',
+        to_addresses: initialData.to_addresses || [],
+        cc_addresses: initialData.cc_addresses || [],
+        bcc_addresses: initialData.bcc_addresses || [],
+        priority: initialData.priority || 'normal',
+        attachments: initialData.attachments || [],
+      });
+      setCurrentTo('');
+      setCurrentCc('');
+      setCurrentBcc('');
+    } else if (open) {
+      // Reset form for new composition
+      setEmailData({
+        subject: '',
+        body: '',
+        to_addresses: [],
+        cc_addresses: [],
+        bcc_addresses: [],
+        priority: 'normal',
+        attachments: [],
+      });
+      setCurrentTo('');
+      setCurrentCc('');
+      setCurrentBcc('');
+    }
+  }, [initialData, open]);
 
   const handleAddEmail = (field: 'to_addresses' | 'cc_addresses' | 'bcc_addresses', email: string) => {
     if (email.trim() && isValidEmail(email.trim())) {
@@ -143,7 +175,9 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">Compose Email</Typography>
+          <Typography variant="h6">
+            {initialData ? 'Edit Email' : 'Compose Email'}
+          </Typography>
           <IconButton onClick={onClose}>
             <CloseIcon />
           </IconButton>
@@ -363,7 +397,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
             disabled={sending || !emailData.subject.trim() || emailData.to_addresses.length === 0}
             startIcon={<SendIcon />}
           >
-            {sending ? 'Sending...' : 'Send'}
+            {sending ? 'Sending...' : (initialData ? 'Update' : 'Send')}
           </Button>
         </Box>
       </DialogActions>

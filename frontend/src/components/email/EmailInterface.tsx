@@ -43,6 +43,7 @@ import {
 import { useSelector } from 'react-redux';
 import EmailList from './EmailList';
 import ComposeEmail from './ComposeEmail';
+import EmailView from './EmailView';
 import { RootState } from '../../store';
 import { config, API_ENDPOINTS } from '../../config/config';
 import { useSidebar } from '../layout/Layout';
@@ -62,6 +63,7 @@ const EmailInterface: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [viewEmail, setViewEmail] = useState<Email | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // State for folders
@@ -175,7 +177,38 @@ const EmailInterface: React.FC = () => {
   };
 
   const handleEmailClick = (email: Email) => {
-    setSelectedEmail(email);
+    // If it's a draft email, open compose dialog for editing
+    if (email.status === 'draft') {
+      setSelectedEmail(email);
+      setComposeOpen(true);
+    } else {
+      // For non-draft emails, open the email view
+      setViewEmail(email);
+    }
+  };
+
+  const handleReplyToEmail = (email: Email) => {
+    // Create a reply email with the original sender as recipient
+    const replyEmail = {
+      ...email,
+      subject: email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`,
+      to_addresses: [email.from_address], // Reply to the original sender
+      body: `\n\n--- Original Message ---\nFrom: ${email.from_address.name || email.from_address.email}\nDate: ${new Date(email.created_at).toLocaleString()}\nSubject: ${email.subject}\n\n${email.body}`,
+    };
+    setSelectedEmail(replyEmail);
+    setComposeOpen(true);
+  };
+
+  const handleForwardEmail = (email: Email) => {
+    // Create a forward email
+    const forwardEmail = {
+      ...email,
+      subject: email.subject.startsWith('Fwd:') ? email.subject : `Fwd: ${email.subject}`,
+      to_addresses: [], // Empty for forwarding
+      body: `\n\n--- Forwarded Message ---\nFrom: ${email.from_address.name || email.from_address.email}\nDate: ${new Date(email.created_at).toLocaleString()}\nSubject: ${email.subject}\n\n${email.body}`,
+    };
+    setSelectedEmail(forwardEmail);
+    setComposeOpen(true);
   };
 
   const handleStarToggle = async (emailId: string) => {
@@ -225,6 +258,7 @@ const EmailInterface: React.FC = () => {
             ? { ...email, is_read: isRead }
             : email
         ));
+        await loadFolders(); // Refresh folder counts to update unread count
       }
     } catch (err) {
       console.error('Error marking as read:', err);
@@ -237,8 +271,14 @@ const EmailInterface: React.FC = () => {
     }
     
     try {
-      const response = await fetch(`${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.COMPOSE}?user_id=${user.id}`, {
-        method: 'POST',
+      const endpoint = selectedEmail 
+        ? `${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.UPDATE.replace('{id}', selectedEmail.id)}?user_id=${user.id}`
+        : `${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.COMPOSE}?user_id=${user.id}`;
+      
+      const method = selectedEmail ? 'PUT' : 'POST';
+      
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -267,8 +307,14 @@ const EmailInterface: React.FC = () => {
     }
     
     try {
-      const response = await fetch(`${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.COMPOSE}?user_id=${user.id}`, {
-        method: 'POST',
+      const endpoint = selectedEmail 
+        ? `${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.UPDATE.replace('{id}', selectedEmail.id)}?user_id=${user.id}`
+        : `${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.COMPOSE}?user_id=${user.id}`;
+      
+      const method = selectedEmail ? 'PUT' : 'POST';
+      
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -328,6 +374,8 @@ const EmailInterface: React.FC = () => {
       </Box>
     );
   }
+
+
 
   return (
     <Box sx={{ display: 'flex', height: '100%', width: '100%' }}>
@@ -396,37 +444,53 @@ const EmailInterface: React.FC = () => {
                     },
                   }}
                 >
-                  <ListItemIcon sx={{ 
-                    minWidth: sidebarCollapsed ? 24 : 40, 
-                    color: currentFolder === folder.id ? '#1a73e8' : '#5f6368',
-                    justifyContent: 'center',
-                    fontSize: sidebarCollapsed ? '18px' : '18px'
-                  }}>
+                                     <ListItemIcon sx={{ 
+                     minWidth: sidebarCollapsed ? 24 : 40, 
+                     color: currentFolder === folder.id ? '#202124' : '#5f6368',
+                     justifyContent: 'center',
+                     fontSize: sidebarCollapsed ? '18px' : '18px'
+                   }}>
                     {getFolderIcon(folder.icon)}
                   </ListItemIcon>
                   {!sidebarCollapsed && (
                     <>
                       <ListItemText 
                         primary={folder.name}
-                        primaryTypographyProps={{
-                          fontSize: '14px',
-                          fontWeight: currentFolder === folder.id ? 600 : 400,
-                          color: currentFolder === folder.id ? '#1a73e8' : '#202124',
-                        }}
+                                                 primaryTypographyProps={{
+                           fontSize: '14px',
+                           fontWeight: currentFolder === folder.id ? 600 : 400,
+                           color: currentFolder === folder.id ? '#202124' : '#202124',
+                         }}
                       />
-                      {folder.unread_count > 0 && (
-                        <Badge 
-                          badgeContent={folder.unread_count} 
-                          color="primary"
-                          sx={{
-                            '& .MuiBadge-badge': {
-                              backgroundColor: '#1a73e8',
-                              fontSize: '12px',
-                              fontWeight: 500,
-                            }
-                          }}
-                        />
-                      )}
+                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                         {/* Total email count - only show if > 0 */}
+                         {folder.email_count > 0 && (
+                           <Typography
+                             variant="body2"
+                             sx={{
+                               fontSize: '12px',
+                               color: currentFolder === folder.id ? '#202124' : '#5f6368',
+                               fontWeight: currentFolder === folder.id ? 600 : 400,
+                             }}
+                           >
+                             {folder.email_count.toLocaleString()}
+                           </Typography>
+                         )}
+                         {/* Unread count badge */}
+                         {folder.unread_count > 0 && (
+                           <Badge 
+                             badgeContent={folder.unread_count} 
+                             color="primary"
+                             sx={{
+                               '& .MuiBadge-badge': {
+                                 backgroundColor: '#1a73e8',
+                                 fontSize: '12px',
+                                 fontWeight: 500,
+                               }
+                             }}
+                           />
+                         )}
+                       </Box>
                     </>
                   )}
                 </ListItemButton>
@@ -471,139 +535,183 @@ const EmailInterface: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Main Content Area */}
-      <Box sx={{ 
-        flexGrow: 1, 
-        display: 'flex', 
-        flexDirection: 'column',
-        minWidth: 0, // Prevents flex item from overflowing
-        height: '100%',
-      }}>
-        {/* Email List Toolbar - Gmail Style */}
-        <Box sx={{ 
-          borderBottom: '1px solid #e8eaed',
-          backgroundColor: '#fff',
-          px: 2,
-          py: 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          minHeight: 48,
-          flexShrink: 0, // Prevents toolbar from shrinking
-        }}>
-          {/* Checkbox with dropdown - Gmail positioning */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-            <Checkbox
-              checked={selectedEmails.length === emails.length && emails.length > 0}
-              indeterminate={selectedEmails.length > 0 && selectedEmails.length < emails.length}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setSelectedEmails(emails.map(email => email.id));
-                } else {
-                  setSelectedEmails([]);
-                }
-              }}
-              sx={{ 
-                color: '#5f6368',
-                padding: '8px',
-                '&.Mui-checked': {
-                  color: '#1a73e8',
-                }
-              }}
-            />
-            <IconButton 
-              size="small" 
-              sx={{ 
-                color: '#5f6368', 
-                padding: '4px',
-                marginLeft: '-4px',
-                marginRight: '4px'
-              }}
-            >
-              <ArrowDownIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Box>
+             {/* Main Content Area */}
+       <Box sx={{ 
+         flexGrow: 1, 
+         display: 'flex', 
+         flexDirection: 'column',
+         minWidth: 0, // Prevents flex item from overflowing
+         height: '100%',
+       }}>
+         {viewEmail ? (
+           // Email View Mode
+           <EmailView
+             email={viewEmail}
+             onClose={() => setViewEmail(null)}
+             onReply={handleReplyToEmail}
+             onForward={handleForwardEmail}
+             onStarToggle={handleStarToggle}
+             onDelete={handleDeleteEmail}
+             onMarkAsRead={handleMarkAsRead}
+             currentIndex={emails.findIndex(e => e.id === viewEmail.id)}
+             totalEmails={totalEmails}
+             onPrevious={() => {
+               const currentIndex = emails.findIndex(e => e.id === viewEmail.id);
+               if (currentIndex > 0) {
+                 setViewEmail(emails[currentIndex - 1]);
+               }
+             }}
+             onNext={() => {
+               const currentIndex = emails.findIndex(e => e.id === viewEmail.id);
+               if (currentIndex < emails.length - 1) {
+                 setViewEmail(emails[currentIndex + 1]);
+               }
+             }}
+           />
+         ) : (
+           // Email List Mode
+           <>
+             {/* Email List Toolbar - Gmail Style */}
+             <Box sx={{ 
+               borderBottom: '1px solid #e8eaed',
+               backgroundColor: '#fff',
+               px: 2,
+               py: 1,
+               display: 'flex',
+               alignItems: 'center',
+               gap: 1,
+               minHeight: 48,
+               flexShrink: 0, // Prevents toolbar from shrinking
+             }}>
+               {/* Checkbox with dropdown - Gmail positioning */}
+               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                 <Checkbox
+                   checked={selectedEmails.length === emails.length && emails.length > 0}
+                   indeterminate={selectedEmails.length > 0 && selectedEmails.length < emails.length}
+                   onChange={(e) => {
+                     if (e.target.checked) {
+                       setSelectedEmails(emails.map(email => email.id));
+                     } else {
+                       setSelectedEmails([]);
+                     }
+                   }}
+                   sx={{ 
+                     color: '#5f6368',
+                     padding: '8px',
+                     '&.Mui-checked': {
+                       color: '#1a73e8',
+                     }
+                   }}
+                 />
+                 <IconButton 
+                   size="small" 
+                   sx={{ 
+                     color: '#5f6368', 
+                     padding: '4px',
+                     marginLeft: '-4px',
+                     marginRight: '4px'
+                   }}
+                 >
+                   <ArrowDownIcon sx={{ fontSize: 16 }} />
+                 </IconButton>
+               </Box>
 
-          {/* Refresh button */}
-          <IconButton 
-            onClick={loadEmails} 
-            disabled={loading} 
-            size="small" 
-            sx={{ 
-              color: '#5f6368',
-              padding: '8px'
-            }}
-          >
-            <RefreshIcon />
-          </IconButton>
+               {/* Refresh button */}
+               <IconButton 
+                 onClick={loadEmails} 
+                 disabled={loading} 
+                 size="small" 
+                 sx={{ 
+                   color: '#5f6368',
+                   padding: '8px'
+                 }}
+               >
+                 <RefreshIcon />
+               </IconButton>
 
-          {/* More options */}
-          <IconButton 
-            size="small" 
-            sx={{ 
-              color: '#5f6368',
-              padding: '8px'
-            }}
-          >
-            <MoreIcon />
-          </IconButton>
-          
-          <Box sx={{ flexGrow: 1 }} />
-          
-          {/* Pagination text */}
-          <Typography variant="body2" color="text.secondary" sx={{ mr: 1, fontSize: '13px', fontWeight: 500 }}>
-            {totalEmails > 0 ? `${(currentPage - 1) * limit + 1}-${Math.min(currentPage * limit, totalEmails)} of ${totalEmails.toLocaleString()}` : '0 of 0'}
-          </Typography>
-          
-          {/* Navigation arrows */}
-          <IconButton size="small" disabled={currentPage === 1} sx={{ color: '#5f6368' }}>
-            <ArrowLeftIcon />
-          </IconButton>
-          <IconButton size="small" disabled={currentPage >= totalPages} sx={{ color: '#5f6368' }}>
-            <ArrowRightIcon />
-          </IconButton>
-        </Box>
+               {/* More options */}
+               <IconButton 
+                 size="small" 
+                 sx={{ 
+                   color: '#5f6368',
+                   padding: '8px'
+                 }}
+               >
+                 <MoreIcon />
+               </IconButton>
+               
+               <Box sx={{ flexGrow: 1 }} />
+               
+               {/* Pagination text */}
+               <Typography variant="body2" color="text.secondary" sx={{ mr: 1, fontSize: '13px', fontWeight: 500 }}>
+                 {totalEmails > 0 ? `${(currentPage - 1) * limit + 1}-${Math.min(currentPage * limit, totalEmails)} of ${totalEmails.toLocaleString()}` : '0 of 0'}
+               </Typography>
+               
+               {/* Navigation arrows */}
+               <IconButton size="small" disabled={currentPage === 1} sx={{ color: '#5f6368' }}>
+                 <ArrowLeftIcon />
+               </IconButton>
+               <IconButton size="small" disabled={currentPage >= totalPages} sx={{ color: '#5f6368' }}>
+                 <ArrowRightIcon />
+               </IconButton>
+             </Box>
 
-        {/* Email List Container */}
-        <Box sx={{ 
-          flexGrow: 1, 
-          overflow: 'hidden', // Changed from 'auto' to 'hidden'
-          backgroundColor: '#fff',
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
-          {error && (
-            <Alert severity="error" sx={{ m: 2, flexShrink: 0 }}>
-              {error}
-            </Alert>
-          )}
-          
-          {/* Email List - Takes remaining space */}
-          <Box sx={{ 
-            flexGrow: 1, 
-            overflow: 'auto',
-            minHeight: 0, // Important for flex child to shrink properly
-          }}>
-            <EmailList
-              emails={emails}
-              selectedEmails={selectedEmails}
-              onEmailSelect={handleEmailSelect}
-              onEmailClick={handleEmailClick}
-              onStarToggle={handleStarToggle}
-              onDeleteEmail={handleDeleteEmail}
-              onMarkAsRead={handleMarkAsRead}
-              loading={loading}
-            />
-          </Box>
-        </Box>
-      </Box>
+             {/* Email List Container */}
+             <Box sx={{ 
+               flexGrow: 1, 
+               overflow: 'hidden', // Changed from 'auto' to 'hidden'
+               backgroundColor: '#fff',
+               display: 'flex',
+               flexDirection: 'column',
+             }}>
+               {error && (
+                 <Alert severity="error" sx={{ m: 2, flexShrink: 0 }}>
+                   {error}
+                 </Alert>
+               )}
+               
+               {/* Email List - Takes remaining space */}
+               <Box sx={{ 
+                 flexGrow: 1, 
+                 overflow: 'auto',
+                 minHeight: 0, // Important for flex child to shrink properly
+               }}>
+                 <EmailList
+                   emails={emails}
+                   selectedEmails={selectedEmails}
+                   onEmailSelect={handleEmailSelect}
+                   onEmailClick={handleEmailClick}
+                   onReplyToEmail={handleReplyToEmail}
+                   onStarToggle={handleStarToggle}
+                   onDeleteEmail={handleDeleteEmail}
+                   onMarkAsRead={handleMarkAsRead}
+                   loading={loading}
+                 />
+               </Box>
+             </Box>
+           </>
+         )}
+       </Box>
 
       {/* Compose Dialog */}
-      <ComposeEmail
-        open={composeOpen}
-        onClose={() => setComposeOpen(false)}
+             <ComposeEmail
+         open={composeOpen}
+         onClose={() => {
+           setComposeOpen(false);
+           setSelectedEmail(null); // Clear selected email when closing
+           setViewEmail(null); // Also clear view email when closing compose
+         }}
         onSend={handleSendEmail}
         onSaveDraft={handleSaveDraft}
+        initialData={selectedEmail ? {
+          subject: selectedEmail.subject,
+          body: selectedEmail.body,
+          to_addresses: selectedEmail.to_addresses.map(addr => addr.email),
+          cc_addresses: [], // You might want to add cc/bcc fields to your Email type
+          bcc_addresses: [],
+          priority: selectedEmail.priority as any,
+          attachments: [], // You might want to handle existing attachments
+        } : undefined}
       />
     </Box>
   );
