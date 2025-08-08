@@ -57,7 +57,7 @@ class EmailDatabase:
         user_id: str,
         folder: str = "inbox",
         page: int = 1,
-        limit: int = 20,
+        limit: int = 5,
         search: Optional[str] = None,
         status: Optional[EmailStatus] = None,
         is_read: Optional[bool] = None,

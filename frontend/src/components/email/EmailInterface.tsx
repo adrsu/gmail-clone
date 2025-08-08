@@ -20,6 +20,7 @@ import {
   Badge,
   CircularProgress,
   Alert,
+  Pagination,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -89,10 +90,23 @@ const EmailInterface: React.FC = () => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [foldersLoading, setFoldersLoading] = useState(false);
 
-  // Load emails when component mounts or folder changes
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalEmails, setTotalEmails] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [limit] = useState(5);
+
+  // Reset page to 1 when folder or search changes
   useEffect(() => {
-    loadEmails();
-  }, [currentFolder, searchQuery, user?.id, folders]);
+    setCurrentPage(1);
+  }, [currentFolder, searchQuery]);
+
+  // Load emails when component mounts, folder changes, or page changes
+  useEffect(() => {
+    if (user?.id && currentFolder) {
+      loadEmails();
+    }
+  }, [currentFolder, searchQuery, user?.id, folders, currentPage]);
 
   // Load folders when component mounts or user changes
   useEffect(() => {
@@ -156,10 +170,12 @@ const EmailInterface: React.FC = () => {
       const currentFolderData = folders.find(f => f.id === currentFolder);
       const folderName = currentFolderData?.name?.toLowerCase() || 'inbox';
       
-      const response = await fetch(`${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.LIST}?folder=${folderName}&search=${searchQuery}&user_id=${user.id}`);
+      const response = await fetch(`${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.LIST}?folder=${folderName}&search=${searchQuery}&user_id=${user.id}&page=${currentPage}&limit=${limit}`);
       if (response.ok) {
         const data = await response.json();
         setEmails(data.emails || []);
+        setTotalEmails(data.total || 0);
+        setHasMore(data.has_more || false);
       } else {
         throw new Error('Failed to load emails');
       }
@@ -314,6 +330,12 @@ const EmailInterface: React.FC = () => {
     }
   };
 
+  const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
+    setCurrentPage(page);
+  };
+
+  const totalPages = Math.ceil(totalEmails / limit);
+
   // Don't render if user is not authenticated
   if (!user?.id) {
     return (
@@ -408,23 +430,39 @@ const EmailInterface: React.FC = () => {
         </Paper>
 
         {/* Email List */}
-        <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+        <Box sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
           {error && (
             <Alert severity="error" sx={{ m: 2 }}>
               {error}
             </Alert>
           )}
           
-          <EmailList
-            emails={emails}
-            selectedEmails={selectedEmails}
-            onEmailSelect={handleEmailSelect}
-            onEmailClick={handleEmailClick}
-            onStarToggle={handleStarToggle}
-            onDeleteEmail={handleDeleteEmail}
-            onMarkAsRead={handleMarkAsRead}
-            loading={loading}
-          />
+          <Box sx={{ flexGrow: 1 }}>
+            <EmailList
+              emails={emails}
+              selectedEmails={selectedEmails}
+              onEmailSelect={handleEmailSelect}
+              onEmailClick={handleEmailClick}
+              onStarToggle={handleStarToggle}
+              onDeleteEmail={handleDeleteEmail}
+              onMarkAsRead={handleMarkAsRead}
+              loading={loading}
+            />
+          </Box>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2, borderTop: 1, borderColor: 'divider' }}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                showFirstButton
+                showLastButton
+              />
+            </Box>
+          )}
         </Box>
       </Box>
 
