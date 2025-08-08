@@ -12,6 +12,7 @@ import {
   Checkbox,
   Tooltip,
   Divider,
+  Avatar,
 } from '@mui/material';
 import {
   Star as StarIcon,
@@ -104,6 +105,20 @@ const EmailList: React.FC<EmailListProps> = ({
     return text.substring(0, maxLength) + '...';
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return format(date, 'h:mm');
+    } else if (diffInHours < 24 * 7) {
+      return format(date, 'd MMM');
+    } else {
+      return format(date, 'd MMM');
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ p: 2 }}>
@@ -123,20 +138,26 @@ const EmailList: React.FC<EmailListProps> = ({
   }
 
   return (
-    <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
+    <List sx={{ width: '100%', bgcolor: 'background.paper', py: 0 }}>
       {emails.map((email, index) => (
         <React.Fragment key={email.id}>
           <ListItem
             sx={{
-              backgroundColor: email.is_read ? 'background.paper' : 'action.hover',
+              backgroundColor: email.is_read ? 'background.paper' : '#f2f6fc',
               '&:hover': {
-                backgroundColor: 'action.hover',
+                backgroundColor: '#f8f9fa',
+                boxShadow: 'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)',
               },
               cursor: 'pointer',
+              px: 0,
+              py: 0,
+              minHeight: 40,
+              borderBottom: '1px solid #f1f3f4',
             }}
             onClick={() => onEmailClick(email)}
           >
-            <ListItemIcon sx={{ minWidth: 40 }}>
+            {/* Checkbox */}
+            <Box sx={{ px: 1, display: 'flex', alignItems: 'center' }}>
               <Checkbox
                 checked={selectedEmails.includes(email.id)}
                 onChange={(e) => {
@@ -144,125 +165,144 @@ const EmailList: React.FC<EmailListProps> = ({
                   onEmailSelect(email.id, e.target.checked);
                 }}
                 onClick={(e) => e.stopPropagation()}
+                sx={{ 
+                  color: '#5f6368',
+                  '&.Mui-checked': {
+                    color: '#1a73e8',
+                  }
+                }}
               />
-            </ListItemIcon>
+            </Box>
 
-            <ListItemIcon sx={{ minWidth: 40 }}>
+            {/* Star */}
+            <Box sx={{ px: 1, display: 'flex', alignItems: 'center' }}>
               <IconButton
                 onClick={(e) => {
                   e.stopPropagation();
                   onStarToggle(email.id);
                 }}
                 size="small"
+                sx={{ 
+                  color: email.is_starred ? '#f4b400' : '#5f6368',
+                  '&:hover': {
+                    color: email.is_starred ? '#f4b400' : '#1a73e8',
+                  }
+                }}
               >
-                {email.is_starred ? (
-                  <StarIcon sx={{ color: 'warning.main' }} />
-                ) : (
-                  <StarBorderIcon />
-                )}
+                {email.is_starred ? <StarIcon /> : <StarBorderIcon />}
               </IconButton>
-            </ListItemIcon>
+            </Box>
 
-            <ListItemText
-              primary={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span
-                    style={{
-                      fontWeight: email.is_read ? 'normal' : 'bold',
-                      flex: 1,
+            {/* Email Content - Gmail Style Layout */}
+            <Box sx={{ flexGrow: 1, py: 1, px: 1, display: 'flex', alignItems: 'center' }}>
+              {/* Email Details - Single Line Format */}
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                {/* Single Line: Sender - Subject - Body */}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: email.is_read ? 400 : 600,
+                        color: email.is_read ? '#5f6368' : '#202124',
+                        fontSize: '14px',
+                        mr: 2,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {formatEmailAddress(email.from_address)}
+                    </Typography>
+                    
+                                         <Typography
+                       variant="body2"
+                       sx={{
+                         fontWeight: email.is_read ? 400 : 600,
+                         color: email.is_read ? '#5f6368' : '#202124',
+                         fontSize: '14px',
+                         overflow: 'hidden',
+                         textOverflow: 'ellipsis',
+                         whiteSpace: 'nowrap',
+                         flexGrow: 1,
+                       }}
+                     >
+                       {email.subject} -{' '}
+                       <span style={{ 
+                         fontWeight: 400, 
+                         color: '#5f6368' 
+                       }}>
+                         {truncateText(email.body, 50)}
+                       </span>
+                       {email.attachments.length > 0 && (
+                         <AttachmentIcon sx={{ fontSize: 16, color: '#5f6368', ml: 0.5, verticalAlign: 'middle' }} />
+                       )}
+                     </Typography>
+                  </Box>
+                  
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: email.is_read ? '#5f6368' : '#202124',
+                      fontSize: '14px',
+                      fontWeight: email.is_read ? 400 : 600,
+                      minWidth: 'fit-content',
+                      ml: 2,
                     }}
                   >
-                    {formatEmailAddress(email.from_address)}
-                  </span>
-                  {email.priority !== 'normal' && (
-                    <Chip
-                      label={getPriorityLabel(email.priority)}
-                      size="small"
-                      color={getPriorityColor(email.priority) as any}
-                      variant="outlined"
-                    />
-                  )}
-                  {email.attachments.length > 0 && (
-                    <AttachmentIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                  )}
-                </span>
-              }
-              secondary={
-                <span>
-                  <span
-                    style={{
-                      fontWeight: email.is_read ? 'normal' : 'bold',
-                      color: 'inherit',
-                      display: 'block',
-                    }}
-                  >
-                    {email.subject}
-                  </span>
-                  <span
-                    style={{
-                      marginTop: '4px',
-                      color: 'rgba(0, 0, 0, 0.6)',
-                      display: 'block',
-                    }}
-                  >
-                    {truncateText(email.body)}
-                  </span>
-                  <span
-                    style={{
-                      marginTop: '4px',
-                      fontSize: '0.75rem',
-                      color: 'rgba(0, 0, 0, 0.6)',
-                      display: 'block',
-                    }}
-                  >
-                    {format(new Date(email.created_at), 'MMM d, yyyy h:mm a')}
-                  </span>
-                </span>
-              }
-            />
-
-            <ListItemSecondaryAction>
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <Tooltip title={email.is_read ? 'Mark as unread' : 'Mark as read'}>
-                  <IconButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMarkAsRead(email.id, !email.is_read);
-                    }}
-                    size="small"
-                  >
-                    {email.is_read ? <MarkUnreadIcon /> : <MarkReadIcon />}
-                  </IconButton>
-                </Tooltip>
-
-                <Tooltip title="Archive">
-                  <IconButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // TODO: Implement archive functionality
-                    }}
-                    size="small"
-                  >
-                    <ArchiveIcon />
-                  </IconButton>
-                </Tooltip>
-
-                <Tooltip title="Delete">
-                  <IconButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteEmail(email.id);
-                    }}
-                    size="small"
-                    color="error"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
+                    {formatDate(email.created_at)}
+                  </Typography>
+                </Box>
               </Box>
-            </ListItemSecondaryAction>
+            </Box>
+
+            {/* Action Buttons - Hidden by default, shown on hover */}
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 0.5, 
+              opacity: 0, 
+              '&:hover': { opacity: 1 },
+              transition: 'opacity 0.2s ease-in-out',
+              px: 1
+            }}>
+              <Tooltip title={email.is_read ? 'Mark as unread' : 'Mark as read'}>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMarkAsRead(email.id, !email.is_read);
+                  }}
+                  size="small"
+                  sx={{ color: '#5f6368' }}
+                >
+                  {email.is_read ? <MarkUnreadIcon /> : <MarkReadIcon />}
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Archive">
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // TODO: Implement archive functionality
+                  }}
+                  size="small"
+                  sx={{ color: '#5f6368' }}
+                >
+                  <ArchiveIcon />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Delete">
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteEmail(email.id);
+                  }}
+                  size="small"
+                  sx={{ color: '#5f6368' }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
           </ListItem>
-          {index < emails.length - 1 && <Divider />}
         </React.Fragment>
       ))}
     </List>

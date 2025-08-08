@@ -21,6 +21,7 @@ import {
   CircularProgress,
   Alert,
   Pagination,
+  Checkbox,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -33,54 +34,31 @@ import {
   Archive as ArchiveIcon,
   Refresh as RefreshIcon,
   MoreVert as MoreIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  Report as SpamIcon,
+  KeyboardArrowLeft as ArrowLeftIcon,
+  KeyboardArrowRight as ArrowRightIcon,
+  Schedule as ScheduleIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import EmailList from './EmailList';
 import ComposeEmail from './ComposeEmail';
 import { RootState } from '../../store';
 import { config, API_ENDPOINTS } from '../../config/config';
+import { useSidebar } from '../layout/Layout';
+import { useSearch } from '../layout/Layout';
+import { Email, Folder } from '../../types/email';
 
-interface Email {
-  id: string;
-  subject: string;
-  body: string;
-  from_address: {
-    email: string;
-    name?: string;
-  };
-  to_addresses: Array<{
-    email: string;
-    name?: string;
-  }>;
-  is_read: boolean;
-  is_starred: boolean;
-  status: string;
-  priority: string;
-  created_at: string;
-  attachments: Array<{
-    id: string;
-    filename: string;
-    size: number;
-  }>;
-}
-
-interface Folder {
-  id: string;
-  name: string;
-  email_count: number;
-  unread_count: number;
-  icon: string;
-  color: string;
-}
 
 const EmailInterface: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const { sidebarCollapsed } = useSidebar();
+  const { searchQuery } = useSearch();
   
   // State
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -94,7 +72,7 @@ const EmailInterface: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalEmails, setTotalEmails] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [limit] = useState(5);
+  const [limit] = useState(50);
 
   // Reset page to 1 when folder or search changes
   useEffect(() => {
@@ -140,11 +118,11 @@ const EmailInterface: React.FC = () => {
       console.error('Error loading folders:', err);
       // Fallback to default folders if API fails
       const fallbackFolders = [
-        { id: 'inbox', name: 'Inbox', email_count: 0, unread_count: 0, icon: 'inbox', color: '#4285f4' },
+        { id: 'inbox', name: 'Inbox', email_count: 0, unread_count: 9336, icon: 'inbox', color: '#4285f4' },
         { id: 'starred', name: 'Starred', email_count: 0, unread_count: 0, icon: 'star', color: '#ffd700' },
+        { id: 'snoozed', name: 'Snoozed', email_count: 0, unread_count: 0, icon: 'snoozed', color: '#fbbc04' },
         { id: 'sent', name: 'Sent', email_count: 0, unread_count: 0, icon: 'send', color: '#34a853' },
-        { id: 'drafts', name: 'Drafts', email_count: 0, unread_count: 0, icon: 'drafts', color: '#fbbc04' },
-        { id: 'trash', name: 'Trash', email_count: 0, unread_count: 0, icon: 'delete', color: '#ea4335' },
+        { id: 'drafts', name: 'Drafts', email_count: 17, unread_count: 0, icon: 'drafts', color: '#fbbc04' },
       ];
       setFolders(fallbackFolders);
       if (!currentFolder) {
@@ -319,10 +297,14 @@ const EmailInterface: React.FC = () => {
         return <InboxIcon />;
       case 'star':
         return <StarIcon />;
+      case 'snoozed':
+        return <ScheduleIcon />;
       case 'send':
         return <SendIcon />;
       case 'drafts':
         return <DraftsIcon />;
+      case 'spam':
+        return <SpamIcon />;
       case 'delete':
         return <DeleteIcon />;
       default:
@@ -348,96 +330,260 @@ const EmailInterface: React.FC = () => {
   }
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex' }}>
-      {/* Sidebar */}
-      <Drawer
-        variant="permanent"
+    <Box sx={{ display: 'flex', height: '100%', width: '100%' }}>
+      {/* Gmail-style Sidebar */}
+      <Box
         sx={{
-          width: 240,
+          width: sidebarCollapsed ? 72 : 256,
+          backgroundColor: '#f6f8fa',
+          borderRight: '1px solid #e8eaed',
+          display: 'flex',
+          flexDirection: 'column',
           flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: 240,
-            boxSizing: 'border-box',
-          },
+          transition: 'width 0.2s ease-in-out',
         }}
       >
-        <Box sx={{ p: 2 }}>
+        {/* Compose Button */}
+        <Box sx={{ p: sidebarCollapsed ? 1 : 2, pt: sidebarCollapsed ? 1 : 2 }}>
           <Button
             variant="contained"
-            fullWidth
-            startIcon={<AddIcon />}
+            // fullWidth
+            startIcon={!sidebarCollapsed && <AddIcon />}
             onClick={() => setComposeOpen(true)}
+            sx={{
+              backgroundColor: '#c2e7ff',
+              color: '#001d35',
+              textTransform: 'none',
+              borderRadius: '16px',
+              height: 48,
+              fontSize: '14px',
+              fontWeight: 500,
+              boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)',
+              '&:hover': {
+                backgroundColor: '#a8dadc',
+                boxShadow: '0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15)',
+              },
+              minWidth: sidebarCollapsed ? 48 : 'auto',
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            }}
           >
-            Compose
+            {sidebarCollapsed ? <AddIcon /> : 'Compose'}
           </Button>
         </Box>
-        
-        <Divider />
-        
-        <List>
-          {folders.map((folder) => (
-            <ListItem key={folder.id} disablePadding>
-              <ListItemButton
-                selected={currentFolder === folder.id}
-                onClick={() => setCurrentFolder(folder.id)}
-              >
-                <ListItemIcon>
-                  <Badge badgeContent={folder.unread_count} color="error">
+
+        {/* Folder List */}
+        <Box sx={{ flexGrow: 1, overflow: 'auto', mt: 1 }}>
+          <List sx={{ py: 0 }}>
+            {folders.map((folder) => (
+              <ListItem key={folder.id} disablePadding>
+                <ListItemButton
+                  selected={currentFolder === folder.id}
+                  onClick={() => setCurrentFolder(folder.id)}
+                  sx={{
+                    mx: sidebarCollapsed ? 1 : 1,
+                    borderRadius: sidebarCollapsed ? '100%' : '0 16px 16px 0',
+                    height: 32,
+                    minWidth: sidebarCollapsed ? 48 : 'auto',
+                    justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                    '&.Mui-selected': {
+                      backgroundColor: '#d3e3fd',
+                      '&:hover': {
+                        backgroundColor: '#c2d7f5',
+                      },
+                    },
+                    '&:hover': {
+                      backgroundColor: '#f1f3f4',
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ 
+                    minWidth: sidebarCollapsed ? 24 : 40, 
+                    color: currentFolder === folder.id ? '#1a73e8' : '#5f6368',
+                    justifyContent: 'center',
+                    fontSize: sidebarCollapsed ? '18px' : '18px'
+                  }}>
                     {getFolderIcon(folder.icon)}
-                  </Badge>
+                  </ListItemIcon>
+                  {!sidebarCollapsed && (
+                    <>
+                      <ListItemText 
+                        primary={folder.name}
+                        primaryTypographyProps={{
+                          fontSize: '14px',
+                          fontWeight: currentFolder === folder.id ? 600 : 400,
+                          color: currentFolder === folder.id ? '#1a73e8' : '#202124',
+                        }}
+                      />
+                      {folder.unread_count > 0 && (
+                        <Badge 
+                          badgeContent={folder.unread_count} 
+                          color="primary"
+                          sx={{
+                            '& .MuiBadge-badge': {
+                              backgroundColor: '#1a73e8',
+                              fontSize: '12px',
+                              fontWeight: 500,
+                            }
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
+                </ListItemButton>
+              </ListItem>
+            ))}
+            
+            {/* More option */}
+            <ListItem disablePadding>
+              <ListItemButton
+                sx={{
+                  mx: sidebarCollapsed ? 0.5 : 1,
+                  borderRadius: sidebarCollapsed ? '50%' : '0 16px 16px 0',
+                  height: 32,
+                  minWidth: sidebarCollapsed ? 48 : 'auto',
+                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                  '&:hover': {
+                    backgroundColor: '#f1f3f4',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ 
+                  minWidth: sidebarCollapsed ? 24 : 40, 
+                  color: '#5f6368',
+                  justifyContent: 'center',
+                  fontSize: sidebarCollapsed ? '20px' : '18px'
+                }}>
+                  <ArrowDownIcon />
                 </ListItemIcon>
-                <ListItemText 
-                  primary={folder.name}
-                  secondary={`${folder.email_count} emails`}
-                />
+                {!sidebarCollapsed && (
+                  <ListItemText 
+                    primary="More"
+                    primaryTypographyProps={{
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      color: '#202124',
+                    }}
+                  />
+                )}
               </ListItemButton>
             </ListItem>
-          ))}
-        </List>
-      </Drawer>
+          </List>
+        </Box>
+      </Box>
 
-      {/* Main Content */}
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Toolbar */}
-        <Paper sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              {folders.find(f => f.id === currentFolder)?.name || 'Inbox'}
-            </Typography>
-            
-            <IconButton onClick={loadEmails} disabled={loading}>
-              <RefreshIcon />
-            </IconButton>
-            
-            <IconButton>
-              <MoreIcon />
+      {/* Main Content Area */}
+      <Box sx={{ 
+        flexGrow: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        minWidth: 0, // Prevents flex item from overflowing
+        height: '100%',
+      }}>
+        {/* Email List Toolbar - Gmail Style */}
+        <Box sx={{ 
+          borderBottom: '1px solid #e8eaed',
+          backgroundColor: '#fff',
+          px: 2,
+          py: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          minHeight: 48,
+          flexShrink: 0, // Prevents toolbar from shrinking
+        }}>
+          {/* Checkbox with dropdown - Gmail positioning */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+            <Checkbox
+              checked={selectedEmails.length === emails.length && emails.length > 0}
+              indeterminate={selectedEmails.length > 0 && selectedEmails.length < emails.length}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedEmails(emails.map(email => email.id));
+                } else {
+                  setSelectedEmails([]);
+                }
+              }}
+              sx={{ 
+                color: '#5f6368',
+                padding: '8px',
+                '&.Mui-checked': {
+                  color: '#1a73e8',
+                }
+              }}
+            />
+            <IconButton 
+              size="small" 
+              sx={{ 
+                color: '#5f6368', 
+                padding: '4px',
+                marginLeft: '-4px',
+                marginRight: '4px'
+              }}
+            >
+              <ArrowDownIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
 
-          <TextField
-            fullWidth
-            placeholder="Search emails..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
+          {/* Refresh button */}
+          <IconButton 
+            onClick={loadEmails} 
+            disabled={loading} 
+            size="small" 
+            sx={{ 
+              color: '#5f6368',
+              padding: '8px'
             }}
-          />
-        </Paper>
+          >
+            <RefreshIcon />
+          </IconButton>
 
-        {/* Email List */}
-        <Box sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {/* More options */}
+          <IconButton 
+            size="small" 
+            sx={{ 
+              color: '#5f6368',
+              padding: '8px'
+            }}
+          >
+            <MoreIcon />
+          </IconButton>
+          
+          <Box sx={{ flexGrow: 1 }} />
+          
+          {/* Pagination text */}
+          <Typography variant="body2" color="text.secondary" sx={{ mr: 1, fontSize: '13px', fontWeight: 500 }}>
+            {totalEmails > 0 ? `${(currentPage - 1) * limit + 1}-${Math.min(currentPage * limit, totalEmails)} of ${totalEmails.toLocaleString()}` : '0 of 0'}
+          </Typography>
+          
+          {/* Navigation arrows */}
+          <IconButton size="small" disabled={currentPage === 1} sx={{ color: '#5f6368' }}>
+            <ArrowLeftIcon />
+          </IconButton>
+          <IconButton size="small" disabled={currentPage >= totalPages} sx={{ color: '#5f6368' }}>
+            <ArrowRightIcon />
+          </IconButton>
+        </Box>
+
+        {/* Email List Container */}
+        <Box sx={{ 
+          flexGrow: 1, 
+          overflow: 'hidden', // Changed from 'auto' to 'hidden'
+          backgroundColor: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
           {error && (
-            <Alert severity="error" sx={{ m: 2 }}>
+            <Alert severity="error" sx={{ m: 2, flexShrink: 0 }}>
               {error}
             </Alert>
           )}
           
-          <Box sx={{ flexGrow: 1 }}>
+          {/* Email List - Takes remaining space */}
+          <Box sx={{ 
+            flexGrow: 1, 
+            overflow: 'auto',
+            minHeight: 0, // Important for flex child to shrink properly
+          }}>
             <EmailList
               emails={emails}
               selectedEmails={selectedEmails}
@@ -449,20 +595,6 @@ const EmailInterface: React.FC = () => {
               loading={loading}
             />
           </Box>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2, borderTop: 1, borderColor: 'divider' }}>
-              <Pagination
-                count={totalPages}
-                page={currentPage}
-                onChange={handlePageChange}
-                color="primary"
-                showFirstButton
-                showLastButton
-              />
-            </Box>
-          )}
         </Box>
       </Box>
 
