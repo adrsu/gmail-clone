@@ -58,7 +58,27 @@ class SMTPHandler:
                     )
                     msg.attach(part)
 
-            # Connect to SMTP server
+            # In development mode, use local SMTP server if available
+            if settings.development_mode:
+                try:
+                    # Try to connect to local SMTP server first
+                    if self.use_tls:
+                        server = smtplib.SMTP('localhost', settings.smtp_receive_port)
+                        server.starttls(context=ssl.create_default_context())
+                    else:
+                        server = smtplib.SMTP('localhost', settings.smtp_receive_port)
+                    
+                    # Send email without authentication in development
+                    all_recipients = to_emails + (cc_emails or []) + (bcc_emails or [])
+                    server.sendmail(from_email, all_recipients, msg.as_string())
+                    server.quit()
+                    print(f"Development mode: Email sent via local SMTP server to {all_recipients}")
+                    return True
+                except Exception as local_error:
+                    print(f"Local SMTP server not available, falling back to external: {local_error}")
+                    # Fall back to external SMTP server
+
+            # Connect to external SMTP server
             if self.use_tls:
                 server = smtplib.SMTP(self.smtp_server, self.smtp_port)
                 server.starttls(context=ssl.create_default_context())

@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = os.getenv('SMTP_PASSWORD')
     smtp_use_tls: bool = os.getenv('SMTP_USE_TLS', 'true').lower() == 'true'
     development_mode: bool = os.getenv('DEVELOPMENT_MODE', 'true').lower() == 'true'
+
+    # IMAP Server
+    imap_host: str = os.getenv('IMAP_HOST', '0.0.0.0')
+    imap_port: int = int(os.getenv('IMAP_PORT', '1143'))
+    imap_use_ssl: bool = os.getenv('IMAP_USE_SSL', 'false').lower() == 'true'
+    imap_ssl_port: int = int(os.getenv('IMAP_SSL_PORT', '993'))
+
+    # SMTP Server (for receiving emails)
+    smtp_receive_host: str = os.getenv('SMTP_RECEIVE_HOST', '0.0.0.0')
+    smtp_receive_port: int = int(os.getenv('SMTP_RECEIVE_PORT', '2525'))
+    smtp_receive_use_ssl: bool = os.getenv('SMTP_RECEIVE_USE_SSL', 'false').lower() == 'true'
+    smtp_receive_ssl_port: int = int(os.getenv('SMTP_RECEIVE_SSL_PORT', '465'))
     
     # AWS S3
     AWS_ACCESS_KEY_ID: Optional[str] = os.getenv('AWS_ACCESS_KEY_ID')

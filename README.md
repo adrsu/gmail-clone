@@ -45,7 +45,7 @@ This is a comprehensive mailing service application built with modern technologi
 
 ### Phase 2: Core Email Services
 - [x] Email sending/receiving functionality
-- [x] SMTP/IMAP server implementation
+- [x] SMTP/IMAP server implementation ✅ **COMPLETED**
 - [x] Email storage and retrieval with Supabase
 - [x] Basic frontend email interface
 
@@ -83,6 +83,7 @@ This is a comprehensive mailing service application built with modern technologi
 - Celery for background tasks
 - Pydantic for data validation
 - Supabase Python client
+- **Email Server**: Custom SMTP/IMAP implementation
 
 ### Backend-as-a-Service
 - Supabase (PostgreSQL database, Auth, Real-time, Storage)
@@ -128,6 +129,10 @@ pip install -r requirements.txt  # Backend
 # Start development servers
 npm start  # Frontend
 python -m uvicorn main:app --reload  # Backend
+
+# Start Email Server (SMTP/IMAP)
+cd backend
+python run_email_server.py
 ```
 
 ## Project Structure
@@ -139,10 +144,37 @@ gmail-clone/
 │   ├── auth_service/        # Authentication service
 │   ├── user_service/        # User management
 │   ├── email_service/       # Email core service
+│   ├── email_server/        # SMTP/IMAP server implementation
 │   ├── mailbox_service/     # Mailbox management
 │   └── shared/              # Shared utilities
 ├── docs/                    # Documentation
 └── scripts/                 # Setup and deployment scripts
 ```
+
+## Email Server Features
+
+The application includes a complete SMTP/IMAP server implementation:
+
+### SMTP Server (Receiving)
+- **Port**: 25 (default) or 465 (SSL)
+- **Purpose**: Receives incoming emails
+- **Features**: Email parsing, database storage, multi-recipient support
+
+### IMAP Server (Access)
+- **Port**: 143 (default) or 993 (SSL)
+- **Purpose**: Provides email client access
+- **Features**: Mailbox support, authentication, standard IMAP commands
+
+### Development Mode
+- Accepts any authentication credentials
+- Logs email operations
+- Simplified security for testing
+
+### Production Mode
+- Proper authentication required
+- SSL/TLS encryption
+- Production-grade security
+
+For detailed configuration and usage, see `backend/email_server/README.md`.
 
 ---
