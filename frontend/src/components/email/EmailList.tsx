@@ -231,14 +231,14 @@ const EmailList: React.FC<EmailListProps> = ({
                      >
                        {email.status === 'draft' && (
                          <span style={{ 
-                           color: '#fbbc04', 
+                           color: '	#FA8072', 
                            fontWeight: 600,
                            marginRight: '4px'
                          }}>
-                           [Draft] 
+                           Draft 
                          </span>
                        )}
-                       {email.status === 'sent' && (
+                       {/* {email.status === 'sent' && (
                          <span style={{ 
                            color: '#34a853', 
                            fontWeight: 600,
@@ -246,7 +246,7 @@ const EmailList: React.FC<EmailListProps> = ({
                          }}>
                            [Sent] 
                          </span>
-                       )}
+                       )} */}
                        {email.subject} -{' '}
                        <span style={{ 
                          fontWeight: 400, 

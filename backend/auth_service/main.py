@@ -76,6 +76,17 @@ def get_user(email: str):
         print(f"Error connecting to database: {e}")
         return None
 
+def get_user_by_id(user_id: str):
+    try:
+        supabase = get_supabase()
+        response = supabase.table('users').select('*').eq('id', user_id).execute()
+        if response.data:
+            return response.data[0]
+        return None
+    except Exception as e:
+        print(f"Error connecting to database: {e}")
+        return None
+
 def authenticate_user(email: str, password: str):
     user = get_user(email)
     if not user:
@@ -144,6 +155,21 @@ def register(user: UserCreate):
             status_code=500, 
             detail=f"Database error: {str(e)}"
         )
+
+@app.get("/users/{user_id}", response_model=UserResponse)
+async def get_user_by_id_endpoint(user_id: str):
+    """Get user information by user ID"""
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return UserResponse(
+        id=user['id'],
+        email=user['email'],
+        first_name=user.get('first_name'),
+        last_name=user.get('last_name'),
+        created_at=user['created_at']
+    )
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(

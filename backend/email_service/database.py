@@ -5,8 +5,141 @@ from supabase import create_client, Client
 from .models import EmailMessage, EmailStatus, EmailPriority, EmailAddress, EmailAttachment
 from shared.config import settings
 
+# Helper function for user data enrichment
+
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
+
+def get_user_by_id(user_id: str) -> Optional[Dict]:
+    """Get user information by user ID"""
+    try:
+        result = supabase.table("users").select("*").eq("id", user_id).execute()
+        if result.data:
+            return result.data[0]
+        return None
+    except Exception as e:
+        print(f"Error getting user by id {user_id}: {e}")
+        return None
+
+def get_user_by_email(email: str) -> Optional[Dict]:
+    """Get user information by email address"""
+    try:
+        result = supabase.table("users").select("*").eq("email", email).execute()
+        if result.data:
+            return result.data[0]
+        return None
+    except Exception as e:
+        print(f"Error getting user by email {email}: {e}")
+        return None
+
+def enrich_email_with_user_data(email_data: Dict) -> Dict:
+    """Enrich email data with proper user information"""
+    try:
+        # Check if from_address contains a user_id instead of email
+        from_address = email_data.get("from_address", {})
+        to_addresses = email_data.get("to_addresses", [])
+        
+        if isinstance(from_address, dict):
+            from_email = from_address.get("email", "") or ""
+            from_name = from_address.get("name", "") or ""
+            
+            # Check if the email field contains a UUID (user_id) or if name is a UUID
+            is_email_uuid = len(from_email) == 36 and from_email.count('-') == 4
+            is_name_uuid = len(from_name) == 36 and from_name.count('-') == 4
+            
+            # Also check if email ends with @example.com (common pattern for test emails with UUIDs)
+            is_example_email = from_email.endswith("@example.com") and len(from_email.split("@")[0]) == 36
+            
+            user_id_to_lookup = None
+            if is_email_uuid:
+                user_id_to_lookup = from_email
+            elif is_name_uuid:
+                user_id_to_lookup = from_name
+            elif is_example_email:
+                user_id_to_lookup = from_email.split("@")[0]
+            
+            if user_id_to_lookup:
+                user_data = get_user_by_id(user_id_to_lookup)
+                
+                if user_data:
+                    # Create full name
+                    first_name = user_data.get("first_name", "")
+                    last_name = user_data.get("last_name", "")
+                    full_name = f"{first_name} {last_name}".strip()
+                    if not full_name:
+                        full_name = user_data.get("email", user_id_to_lookup)
+                    
+                    # Update from_address with proper data
+                    email_data["from_address"] = {
+                        "email": user_data.get("email", user_id_to_lookup),
+                        "name": full_name
+                    }
+        
+        # Also handle to_addresses, cc_addresses, bcc_addresses if needed
+        for address_field in ["to_addresses", "cc_addresses", "bcc_addresses"]:
+            if address_field in email_data and isinstance(email_data[address_field], list):
+                enriched_addresses = []
+                for addr in email_data[address_field]:
+                    if isinstance(addr, dict):
+                        addr_email = addr.get("email", "") or ""
+                        addr_name = addr.get("name", "") or ""
+                        
+                        # Check if the email field contains a UUID (user_id) or if name is a UUID
+                        is_addr_email_uuid = len(addr_email) == 36 and addr_email.count('-') == 4
+                        is_addr_name_uuid = len(addr_name) == 36 and addr_name.count('-') == 4
+                        is_addr_example_email = addr_email.endswith("@example.com") and len(addr_email.split("@")[0]) == 36
+                        
+                        user_id_to_lookup = None
+                        if is_addr_email_uuid:
+                            user_id_to_lookup = addr_email
+                        elif is_addr_name_uuid:
+                            user_id_to_lookup = addr_name
+                        elif is_addr_example_email:
+                            user_id_to_lookup = addr_email.split("@")[0]
+                        
+                        if user_id_to_lookup:
+                            # Look up by user_id
+                            user_data = get_user_by_id(user_id_to_lookup)
+                            if user_data:
+                                first_name = user_data.get("first_name", "")
+                                last_name = user_data.get("last_name", "")
+                                full_name = f"{first_name} {last_name}".strip()
+                                if not full_name:
+                                    full_name = user_data.get("email", user_id_to_lookup)
+                                
+                                enriched_addresses.append({
+                                    "email": user_data.get("email", user_id_to_lookup),
+                                    "name": full_name
+                                })
+                            else:
+                                enriched_addresses.append(addr)
+                        else:
+                            # Not a user_id, check if it's a real email in our users table
+                            user_data = get_user_by_email(addr_email)
+                            if user_data:
+                                first_name = user_data.get("first_name", "")
+                                last_name = user_data.get("last_name", "")
+                                full_name = f"{first_name} {last_name}".strip()
+                                if not full_name:
+                                    full_name = user_data.get("email", addr_email)
+                                
+                                enriched_addresses.append({
+                                    "email": addr_email,
+                                    "name": full_name
+                                })
+                            else:
+                                # Not in our users table, keep original
+                                enriched_addresses.append(addr)
+                    else:
+                        enriched_addresses.append(addr)
+                email_data[address_field] = enriched_addresses
+        
+        return email_data
+    except Exception as e:
+        print(f"Error enriching email data: {e}")
+        import traceback
+        traceback.print_exc()
+        return email_data
 
 class EmailDatabase:
     @staticmethod
@@ -102,7 +235,9 @@ class EmailDatabase:
         
         emails = []
         for record in result.data:
-            emails.append(EmailMessage(**record))
+            # Enrich email data with proper user information
+            enriched_record = enrich_email_with_user_data(record)
+            emails.append(EmailMessage(**enriched_record))
         
         return emails
 
@@ -112,7 +247,9 @@ class EmailDatabase:
         result = supabase.table("emails").select("*").eq("id", email_id).eq("user_id", user_id).execute()
         
         if result.data:
-            return EmailMessage(**result.data[0])
+            # Enrich email data with proper user information
+            enriched_record = enrich_email_with_user_data(result.data[0])
+            return EmailMessage(**enriched_record)
         return None
 
     @staticmethod

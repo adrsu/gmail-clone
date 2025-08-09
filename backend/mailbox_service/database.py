@@ -13,12 +13,12 @@ class MailboxDatabase:
     async def create_system_folders(user_id: str) -> List[EmailFolder]:
         """Create default system folders for a new user"""
         system_folders = [
-            {"name": "Inbox", "icon": "inbox", "color": "#4285f4"},
-            {"name": "Sent", "icon": "send", "color": "#34a853"},
-            {"name": "Drafts", "icon": "drafts", "color": "#fbbc04"},
-            {"name": "Trash", "icon": "delete", "color": "#ea4335"},
-            {"name": "Spam", "icon": "report", "color": "#ff6b6b"},
-            {"name": "Starred", "icon": "star", "color": "#ffd700"},
+            {"name": "Inbox", "icon": "inbox", "color": "#4285f4", "order": 1},
+            {"name": "Starred", "icon": "star", "color": "#ffd700", "order": 2},
+            {"name": "Sent", "icon": "send", "color": "#34a853", "order": 3},
+            {"name": "Drafts", "icon": "drafts", "color": "#fbbc04", "order": 4},
+            {"name": "Spam", "icon": "report", "color": "#ff6b6b", "order": 5},
+            {"name": "Trash", "icon": "delete", "color": "#ea4335", "order": 6},
         ]
         
         folders = []
@@ -32,6 +32,7 @@ class MailboxDatabase:
                 "user_id": user_id,
                 "icon": folder_data["icon"],
                 "color": folder_data["color"],
+                "folder_order": folder_data["order"],
                 "email_count": 0,
                 "unread_count": 0,
                 "created_at": now.isoformat(),
@@ -64,6 +65,7 @@ class MailboxDatabase:
             "parent_id": parent_id,
             "color": color,
             "icon": icon,
+            "folder_order": 999,  # Custom folders go at the end
             "email_count": 0,
             "unread_count": 0,
             "created_at": now.isoformat(),
@@ -80,7 +82,7 @@ class MailboxDatabase:
     @staticmethod
     async def get_folders(user_id: str) -> List[EmailFolder]:
         """Get all folders for a user"""
-        result = supabase.table("email_folders").select("*").eq("user_id", user_id).order("name").execute()
+        result = supabase.table("email_folders").select("*").eq("user_id", user_id).order("folder_order", desc=False).execute()
         
         folders = []
         for record in result.data:

@@ -84,9 +84,10 @@ const EmailInterface: React.FC = () => {
   // Load emails when component mounts, folder changes, or page changes
   useEffect(() => {
     if (user?.id && currentFolder) {
+      setViewEmail(null); // Close email view when folder changes
       loadEmails();
     }
-  }, [currentFolder, searchQuery, user?.id, folders, currentPage]);
+  }, [currentFolder, searchQuery, user?.id, currentPage]);
 
   // Load folders when component mounts or user changes
   useEffect(() => {
@@ -107,11 +108,22 @@ const EmailInterface: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         const foldersData = data.folders || [];
-        setFolders(foldersData);
+        
+        // Sort folders by folder_order, then by name for custom folders
+        const sortedFolders = foldersData.sort((a: any, b: any) => {
+          if (a.folder_order && b.folder_order) {
+            return a.folder_order - b.folder_order;
+          }
+          if (a.folder_order && !b.folder_order) return -1;
+          if (!a.folder_order && b.folder_order) return 1;
+          return a.name.localeCompare(b.name);
+        });
+        
+        setFolders(sortedFolders);
         
         // Set the first folder as current if no folder is selected
-        if (!currentFolder && foldersData.length > 0) {
-          setCurrentFolder(foldersData[0].id);
+        if (!currentFolder && sortedFolders.length > 0) {
+          setCurrentFolder(sortedFolders[0].id);
         }
       } else {
         throw new Error('Failed to load folders');
@@ -120,11 +132,12 @@ const EmailInterface: React.FC = () => {
       console.error('Error loading folders:', err);
       // Fallback to default folders if API fails
       const fallbackFolders = [
-        { id: 'inbox', name: 'Inbox', email_count: 0, unread_count: 9336, icon: 'inbox', color: '#4285f4' },
-        { id: 'starred', name: 'Starred', email_count: 0, unread_count: 0, icon: 'star', color: '#ffd700' },
-        { id: 'snoozed', name: 'Snoozed', email_count: 0, unread_count: 0, icon: 'snoozed', color: '#fbbc04' },
-        { id: 'sent', name: 'Sent', email_count: 0, unread_count: 0, icon: 'send', color: '#34a853' },
-        { id: 'drafts', name: 'Drafts', email_count: 17, unread_count: 0, icon: 'drafts', color: '#fbbc04' },
+        { id: 'inbox', name: 'Inbox', email_count: 0, unread_count: 0, icon: 'inbox', color: '#4285f4', folder_order: 1 },
+        { id: 'starred', name: 'Starred', email_count: 0, unread_count: 0, icon: 'star', color: '#ffd700', folder_order: 2 },
+        { id: 'sent', name: 'Sent', email_count: 0, unread_count: 0, icon: 'send', color: '#34a853', folder_order: 3 },
+        { id: 'drafts', name: 'Drafts', email_count: 0, unread_count: 0, icon: 'drafts', color: '#fbbc04', folder_order: 4 },
+        { id: 'spam', name: 'Spam', email_count: 0, unread_count: 0, icon: 'report', color: '#ff6b6b', folder_order: 5 },
+        { id: 'trash', name: 'Trash', email_count: 0, unread_count: 0, icon: 'delete', color: '#ea4335', folder_order: 6 },
       ];
       setFolders(fallbackFolders);
       if (!currentFolder) {
@@ -176,7 +189,7 @@ const EmailInterface: React.FC = () => {
     }
   };
 
-  const handleEmailClick = (email: Email) => {
+  const handleEmailClick = async (email: Email) => {
     // If it's a draft email, open compose dialog for editing
     if (email.status === 'draft') {
       setSelectedEmail(email);
@@ -184,6 +197,19 @@ const EmailInterface: React.FC = () => {
     } else {
       // For non-draft emails, open the email view
       setViewEmail(email);
+      
+      // Automatically mark as read if not already read
+      if (!email.is_read) {
+        // Update viewed email immediately for responsive UI
+        setViewEmail(prev => prev ? { ...prev, is_read: true } : { ...email, is_read: true });
+        
+        // Then call the API in the background
+        handleMarkAsRead(email.id, true).catch(err => {
+          console.error('Failed to mark as read:', err);
+          // Revert on error
+          setViewEmail(prev => prev ? { ...prev, is_read: false } : null);
+        });
+      }
     }
   };
 
@@ -426,7 +452,10 @@ const EmailInterface: React.FC = () => {
               <ListItem key={folder.id} disablePadding>
                 <ListItemButton
                   selected={currentFolder === folder.id}
-                  onClick={() => setCurrentFolder(folder.id)}
+                  onClick={() => {
+                    setCurrentFolder(folder.id);
+                    setViewEmail(null); // Close email view when switching folders
+                  }}
                   sx={{
                     mx: sidebarCollapsed ? 1 : 1,
                     borderRadius: sidebarCollapsed ? '100%' : '0 16px 16px 0',

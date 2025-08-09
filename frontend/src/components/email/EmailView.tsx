@@ -11,13 +11,9 @@ import {
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
-  Archive as ArchiveIcon,
   Report as ReportIcon,
   Delete as DeleteIcon,
   Mail as MailIcon,
-  Folder as FolderIcon,
-  Label as LabelIcon,
-  MoreVert as MoreVertIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   SentimentSatisfied as EmojiIcon,
@@ -94,6 +90,31 @@ const EmailView: React.FC<EmailViewProps> = ({
     return colors[index];
   };
 
+  const getRecipientFirstName = () => {
+    if (email.to_addresses && email.to_addresses.length > 0) {
+      const firstRecipient = email.to_addresses[0];
+      if (firstRecipient.name) {
+        // Extract first name from full name
+        return firstRecipient.name.split(' ')[0];
+      } else {
+        // Use email if no name available
+        return firstRecipient.email.split('@')[0];
+      }
+    }
+    return 'me';
+  };
+
+  const getSenderDisplayName = () => {
+    const name = email.from_address.name;
+    const email_addr = email.from_address.email;
+    
+    if (name) {
+      return `${name} <${email_addr}>`;
+    } else {
+      return email_addr;
+    }
+  };
+
   return (
     <Box sx={{ 
       height: '100%', 
@@ -113,38 +134,45 @@ const EmailView: React.FC<EmailViewProps> = ({
         flexShrink: 0,
       }}>
         {/* Left side actions */}
-        <IconButton onClick={onClose} size="small" sx={{ color: '#5f6368' }}>
-          <ArrowBackIcon />
-        </IconButton>
-        <IconButton size="small" sx={{ color: '#5f6368' }}>
-          <ArchiveIcon />
-        </IconButton>
-        <IconButton size="small" sx={{ color: '#5f6368' }}>
-          <ReportIcon />
-        </IconButton>
-        <IconButton 
-          onClick={() => onDelete(email.id)} 
-          size="small" 
-          sx={{ color: '#5f6368' }}
-        >
-          <DeleteIcon />
-        </IconButton>
-        <IconButton 
-          onClick={() => onMarkAsRead(email.id, !email.is_read)}
-          size="small" 
-          sx={{ color: '#5f6368' }}
-        >
-          <MailIcon />
-        </IconButton>
-        <IconButton size="small" sx={{ color: '#5f6368' }}>
-          <FolderIcon />
-        </IconButton>
-        <IconButton size="small" sx={{ color: '#5f6368' }}>
-          <LabelIcon />
-        </IconButton>
-        <IconButton size="small" sx={{ color: '#5f6368' }}>
-          <MoreVertIcon />
-        </IconButton>
+        <Tooltip title="Back to inbox">
+          <IconButton onClick={onClose} size="small" sx={{ color: '#5f6368' }}>
+            <ArrowBackIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Report spam">
+          <IconButton size="small" sx={{ color: '#5f6368' }}>
+            <ReportIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Delete">
+          <IconButton 
+            onClick={() => {
+              onDelete(email.id);
+              onClose(); // Return to email list after deleting
+            }}
+            size="small" 
+            sx={{ color: '#5f6368' }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title={email.is_read ? "Mark as unread" : "Mark as read"}>
+          <IconButton 
+            onClick={() => {
+              const markAsUnread = email.is_read; // If email is read, we're marking as unread
+              onMarkAsRead(email.id, !email.is_read);
+              
+              // If marking as unread, return to email list
+              if (markAsUnread) {
+                onClose();
+              }
+            }}
+            size="small" 
+            sx={{ color: '#5f6368' }}
+          >
+            <MailIcon />
+          </IconButton>
+        </Tooltip>
 
         <Box sx={{ flexGrow: 1 }} />
 
@@ -210,14 +238,14 @@ const EmailView: React.FC<EmailViewProps> = ({
           <Box sx={{ flexGrow: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
               <Typography variant="body1" sx={{ fontWeight: 600, color: '#202124' }}>
-                {email.from_address.name || email.from_address.email}
+                {getSenderDisplayName()}
               </Typography>
               <IconButton size="small" sx={{ color: '#5f6368', p: 0.5 }}>
                 <ArrowDownIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '13px' }}>
-              to me
+              to {getRecipientFirstName()}
             </Typography>
           </Box>
 
@@ -242,9 +270,7 @@ const EmailView: React.FC<EmailViewProps> = ({
             >
               <ReplyIcon />
             </IconButton>
-            <IconButton size="small" sx={{ color: '#5f6368' }}>
-              <MoreVertIcon />
-            </IconButton>
+
           </Box>
         </Box>
 

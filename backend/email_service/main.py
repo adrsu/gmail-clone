@@ -33,6 +33,34 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "email-service"}
 
+@app.get("/test-user-lookup/{user_id}")
+async def test_user_lookup(user_id: str):
+    """Test endpoint to verify user lookup functionality"""
+    from .database import get_user_by_id, enrich_email_with_user_data
+    
+    print(f"🔍 TEST: Looking up user_id: {user_id}")
+    user_data = get_user_by_id(user_id)
+    print(f"🔍 TEST: User data found: {user_data}")
+    
+    # Test enrichment with sample data
+    sample_email = {
+        "from_address": {
+            "email": f"{user_id}@example.com",
+            "name": user_id
+        },
+        "to_addresses": []
+    }
+    print(f"🔍 TEST: Sample email before enrichment: {sample_email}")
+    
+    enriched = enrich_email_with_user_data(sample_email)
+    print(f"🔍 TEST: Sample email after enrichment: {enriched}")
+    
+    return {
+        "user_id": user_id,
+        "user_data": user_data,
+        "sample_enrichment": enriched
+    }
+
 
 @app.post("/emails/compose", response_model=EmailMessage)
 async def compose_email(

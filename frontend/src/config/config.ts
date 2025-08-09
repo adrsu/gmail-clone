@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
   USERS: {
     PROFILE: '/users/profile',
     SETTINGS: '/users/settings',
+    GET_BY_ID: '/users/{id}',
   },
   EMAILS: {
     COMPOSE: '/emails/compose',

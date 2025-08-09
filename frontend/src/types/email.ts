@@ -29,4 +29,5 @@ export interface Folder {
   unread_count: number;
   icon: string;
   color: string;
+  folder_order?: number;
 }

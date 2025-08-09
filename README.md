@@ -45,10 +45,10 @@ This is a comprehensive mailing service application built with modern technologi
 
 ### Phase 2: Core Email Services
 - [x] Email sending/receiving functionality
-- [x] SMTP/IMAP server implementation ✅ **COMPLETED**
+- [x] SMTP/IMAP server implementation
 - [x] Email storage and retrieval with Supabase
 - [x] Basic frontend email interface
-- [x] **Email Server Integration** ✅ **COMPLETED**
+- [x] Email Server Integration
 
 ### Phase 3: Advanced Features
 - [ ] Search functionality with Elasticsearch
