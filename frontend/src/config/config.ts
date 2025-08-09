@@ -1,7 +1,7 @@
 export const config = {
   API_BASE_URL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000',
-  EMAIL_SERVICE_URL: process.env.REACT_APP_EMAIL_SERVICE_URL || 'http://localhost:8002',
-  MAILBOX_SERVICE_URL: process.env.REACT_APP_MAILBOX_SERVICE_URL || 'http://localhost:8003',
+  EMAIL_SERVICE_URL: process.env.REACT_APP_EMAIL_SERVICE_URL || 'http://localhost:8001',
+  MAILBOX_SERVICE_URL: process.env.REACT_APP_MAILBOX_SERVICE_URL || 'http://localhost:8002',
   WS_BASE_URL: process.env.REACT_APP_WS_BASE_URL || 'ws://localhost:8000',
   STORAGE_KEY: 'gmail_clone_token',
   DEFAULT_PAGE_SIZE: 20,

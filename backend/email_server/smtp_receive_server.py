@@ -42,25 +42,35 @@ class SMTPReceiveServer:
             
             while True:
                 # Read command
+                print(f"🔍 Waiting for command...")
                 line = await reader.readline()
                 if not line:
+                    print("❌ No data received from client")
                     break
                     
                 line_str = line.decode('utf-8', errors='ignore').strip()
+                print(f"🔍 Received line: '{line_str}'")
                 if not line_str:
+                    print("❌ Empty line received")
                     continue
                 
                 # Update last activity
                 self.connections[client_id].last_activity = datetime.utcnow()
                 
                 # Parse command
+                print(f"🔍 Parsing command: {line_str}")
                 command = self._parse_command(line_str)
                 if not command:
+                    print("❌ Invalid command")
                     await self._send_response(writer, 500, "Invalid command")
                     continue
                 
+                print(f"✅ Command parsed: {command.command}")
+                
                 # Process command
+                print(f"🔍 Processing command: {command.command}")
                 response = await self._process_command(client_id, command, current_envelope)
+                print(f"✅ Command processed, response: {response.code} {response.message}")
                 
                 # Update envelope if needed
                 if command.command == "MAIL" and response.code == 250:
@@ -76,22 +86,40 @@ class SMTPReceiveServer:
                     clean_recipient = self._clean_email_address(recipient)
                     if clean_recipient:
                         current_envelope.recipients.append(clean_recipient)
-                elif command.command == "DATA" and response.code == 354:
+                # Handle DATA command specially
+                if command.command == "DATA" and response.code == 354:
+                    # Send 354 response first
+                    await self._send_response(writer, response.code, response.message)
+                    print("🔍 About to read email data after sending 354 response...")
                     # Read email data
                     email_data = await self._read_email_data(reader)
+                    print(f"🔍 Email data reading completed, got {len(email_data)} bytes")
                     if current_envelope:
                         current_envelope.data = email_data
-                        # Process and store the email
-                        await self._process_email(current_envelope)
-                        current_envelope = None
-                        # Send success response after processing
-                        await self._send_response(writer, 250, "Message accepted for delivery")
-                        continue  # Skip the normal response sending below
-                
-                await self._send_response(writer, response.code, response.message)
+                        # Process and store the email with timeout
+                        try:
+                            import asyncio
+                            await asyncio.wait_for(self._process_email(current_envelope), timeout=30.0)
+                            current_envelope = None
+                            # Send success response after processing
+                            print("🔍 Sending 250 success response...")
+                            await self._send_response(writer, 250, "Message accepted for delivery")
+                        except asyncio.TimeoutError:
+                            print("❌ Timeout processing email")
+                            await self._send_response(writer, 500, "Internal server error - timeout")
+                            current_envelope = None
+                    else:
+                        print("❌ No current envelope for DATA command")
+                        await self._send_response(writer, 500, "Internal server error - no envelope")
+                    continue  # Skip normal response sending for DATA command
+                else:
+                    # Send normal response for all other commands
+                    await self._send_response(writer, response.code, response.message)
                 
         except Exception as e:
-            print(f"SMTP connection error: {e}")
+            print(f"❌ SMTP connection error: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             # Clean up connection
             if client_id in self.connections:
@@ -118,12 +146,15 @@ class SMTPReceiveServer:
     def _parse_command(self, line: str) -> Optional[SMTPCommand]:
         """Parse SMTP command line"""
         try:
+            print(f"🔍 Parsing command line: '{line}'")
             parts = line.split(' ', 1)
             command = parts[0].upper()
             arguments = parts[1].split(' ') if len(parts) > 1 else []
             
+            print(f"✅ Parsed command: {command}, arguments: {arguments}")
             return SMTPCommand(command=command, arguments=arguments)
-        except Exception:
+        except Exception as e:
+            print(f"❌ Error parsing command: {e}")
             return None
     
     async def _process_command(self, client_id: str, command: SMTPCommand, current_envelope: Optional[EmailEnvelope]) -> SMTPResponse:
@@ -187,39 +218,73 @@ class SMTPReceiveServer:
     
     async def _handle_data(self, command: SMTPCommand, current_envelope: Optional[EmailEnvelope]) -> SMTPResponse:
         """Handle DATA command"""
+        print(f"🔍 Handling DATA command...")
+        
         if not current_envelope:
+            print("❌ No current envelope")
             return SMTPResponse(code=503, message="Need MAIL command")
         
         if not current_envelope.recipients:
+            print("❌ No recipients")
             return SMTPResponse(code=503, message="Need RCPT command")
         
+        print(f"✅ DATA command valid, returning 354 response")
         return SMTPResponse(code=354, message="End data with <CR><LF>.<CR><LF>")
     
     async def _read_email_data(self, reader: asyncio.StreamReader) -> bytes:
         """Read email data until end marker"""
         data = b""
-        while True:
-            line = await reader.readline()
-            if not line:
-                break
-            
-            # Check for end marker
-            if line.strip() == b".":
-                break
-            
-            # Remove leading dot if present
-            if line.startswith(b"."):
-                line = line[1:]
-            
-            data += line
+        line_count = 0
+        try:
+            import asyncio
+            print("🔍 Starting to read email data...")
+            while True:
+                # Read line with timeout
+                print(f"🔍 Reading line {line_count + 1}...")
+                line = await asyncio.wait_for(reader.readline(), timeout=10.0)
+                line_count += 1
+                
+                if not line:
+                    print(f"🔍 No more data after {line_count} lines")
+                    break
+                
+                print(f"🔍 Received line {line_count}: {line[:100]}...")  # First 100 chars
+                
+                # Check for end marker
+                if line.strip() == b".":
+                    print("🔍 Found end marker '.'")
+                    break
+                
+                # Remove leading dot if present (dot stuffing)
+                if line.startswith(b"."):
+                    line = line[1:]
+                
+                data += line
+                
+                # Safety check to prevent infinite loops
+                if line_count > 1000:
+                    print("❌ Too many lines, breaking")
+                    break
+                    
+        except asyncio.TimeoutError:
+            print(f"❌ Timeout reading email data after {line_count} lines, {len(data)} bytes received")
+            return data  # Return what we have so far
         
+        print(f"✅ Finished reading email data: {len(data)} bytes, {line_count} lines")
         return data
     
     async def _process_email(self, envelope: EmailEnvelope):
         """Process and store received email"""
         try:
+            # Debug: Print raw email data
+            print(f"🔍 Raw email data length: {len(envelope.data)} bytes")
+            print(f"🔍 Raw email data (first 500 chars): {envelope.data[:500]}")
+            
             # Parse email
             email_message = self.parser.parsebytes(envelope.data)
+            
+            # Debug: Print all headers
+            print(f"🔍 Email headers: {dict(email_message.items())}")
             
             # Extract email components
             subject = email_message.get('Subject', 'No Subject')
@@ -227,6 +292,10 @@ class SMTPReceiveServer:
             to_header = email_message.get('To', '')
             cc_header = email_message.get('Cc', '')
             date_header = email_message.get('Date', '')
+            
+            print(f"🔍 Parsed subject: '{subject}'")
+            print(f"🔍 Parsed from: '{from_header}'")
+            print(f"🔍 Parsed to: '{to_header}'")
             
             # Parse addresses with error handling
             try:
@@ -275,9 +344,16 @@ class SMTPReceiveServer:
             
             # Store email for each recipient
             for recipient in envelope.recipients:
-                # Use the existing user ID from database
-                # In a real implementation, you'd look up the user by email address
-                user_id = self.default_user_id
+                print(f"🔍 Processing email for recipient: {recipient}")
+                
+                # Look up the recipient's user ID by email address
+                user_id = await self._get_user_id_by_email(recipient)
+                
+                if not user_id:
+                    print(f"❌ Recipient {recipient} not found in database, skipping...")
+                    continue
+                
+                print(f"✅ Found user_id {user_id} for recipient {recipient}")
                 
                 email_data = {
                     "subject": subject,
@@ -293,14 +369,17 @@ class SMTPReceiveServer:
                 }
                 
                 # Store in database
+                print(f"💾 Storing email in database for user_id: {user_id}")
                 await EmailDatabase.create_email(email_data, user_id)
                 
-                print(f"Email received for {recipient}: {subject}")
+                print(f"✅ Email stored successfully for {recipient}: {subject}")
                 
         except Exception as e:
-            print(f"Error processing email: {e}")
+            print(f"❌ Error processing email: {e}")
             import traceback
             traceback.print_exc()
+            # Re-raise the exception to prevent hanging
+            raise
     
     def _parse_email_address(self, address_string: str) -> EmailAddress:
         """Parse email address from string"""
@@ -343,6 +422,41 @@ class SMTPReceiveServer:
         
         return addresses
     
+    async def _get_user_id_by_email(self, email: str) -> Optional[str]:
+        """Get user ID by email address"""
+        try:
+            import asyncio
+            from shared.database import get_supabase
+            supabase = get_supabase()
+            
+            # Clean the email address
+            clean_email = self._clean_email_address(email)
+            print(f"🔍 Looking up user for email: '{email}' -> cleaned: '{clean_email}'")
+            
+            # Look up user by email with timeout
+            try:
+                # Run the database query with a timeout
+                loop = asyncio.get_event_loop()
+                response = await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda: supabase.table('users').select('id').eq('email', clean_email).execute()),
+                    timeout=5.0
+                )
+                
+                if response.data:
+                    user_id = response.data[0]['id']
+                    print(f"✅ Found user_id: {user_id} for email: {clean_email}")
+                    return user_id
+                else:
+                    print(f"❌ No user found for email: {clean_email}")
+                    return None
+            except asyncio.TimeoutError:
+                print(f"❌ Timeout looking up user for email: {clean_email}")
+                return None
+                
+        except Exception as e:
+            print(f"❌ Error looking up user by email {email}: {e}")
+            return None
+
     async def _send_response(self, writer: asyncio.StreamWriter, code: int, message: str):
         """Send SMTP response to client"""
         response = f"{code} {message}\r\n"

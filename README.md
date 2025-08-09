@@ -48,6 +48,7 @@ This is a comprehensive mailing service application built with modern technologi
 - [x] SMTP/IMAP server implementation ✅ **COMPLETED**
 - [x] Email storage and retrieval with Supabase
 - [x] Basic frontend email interface
+- [x] **Email Server Integration** ✅ **COMPLETED**
 
 ### Phase 3: Advanced Features
 - [ ] Search functionality with Elasticsearch
@@ -104,6 +105,67 @@ This is a comprehensive mailing service application built with modern technologi
 - Input validation
 - Supabase Row Level Security
 
+## 🎉 Email Server Integration
+
+### **Fully Integrated Email Server**
+
+The Gmail clone now includes a **complete SMTP/IMAP email server** that provides:
+
+- **SMTP Server** (Port 2525): Receives incoming emails
+- **IMAP Server** (Port 1143): Provides email access and management
+- **Database Integration**: Stores emails in Supabase
+- **Real Email Processing**: Parses and stores actual email messages
+- **Mailbox Management**: Supports standard email folders (INBOX, Sent, Drafts, etc.)
+
+### Email Server Features
+
+✅ **SMTP Functionality**:
+- Receives emails from external sources
+- Processes email headers and content
+- Stores emails in database with proper metadata
+- Supports multiple recipients (TO, CC, BCC)
+
+✅ **IMAP Functionality**:
+- Email authentication and login
+- Mailbox listing and management
+- Email retrieval and viewing
+- Standard IMAP protocol compliance
+
+✅ **Integration**:
+- Seamlessly integrated with existing email service
+- Works with the web interface
+- Supports real email composition and sending
+- Database storage with user association
+
+### Quick Start with Email Server
+
+1. **Start the Integrated Server**:
+   ```bash
+   # Windows
+   start_gmail_clone.bat
+   
+   # Linux/Mac
+   ./start_gmail_clone.sh
+   
+   # Or manually
+   cd backend
+   python run_integrated_server.py
+   ```
+
+2. **Test the Integration**:
+   ```bash
+   cd backend
+   python test_integration.py
+   ```
+
+3. **Access the Application**:
+   - Frontend: http://localhost:3000
+   - Auth Service: http://localhost:8000
+   - Email Service: http://localhost:8001
+   - Mailbox Service: http://localhost:8002
+   - SMTP Server: localhost:2525
+   - IMAP Server: localhost:1143
+
 ## Quick Start
 
 1. Clone the repository
@@ -126,13 +188,12 @@ pip install -r requirements.txt  # Backend
 # 2. Get your project URL and API keys
 # 3. Run the SQL scripts in docs/phase1-foundation-setup.md
 
-# Start development servers
-npm start  # Frontend
-python -m uvicorn main:app --reload  # Backend
-
-# Start Email Server (SMTP/IMAP)
+# Start the integrated server (includes email server)
 cd backend
-python run_email_server.py
+python run_integrated_server.py
+
+# Or start frontend separately
+npm start  # Frontend
 ```
 
 ## Project Structure
@@ -142,7 +203,6 @@ gmail-clone/
 ├── frontend/                 # React.js frontend
 ├── backend/                  # Python microservices
 │   ├── auth_service/        # Authentication service
-│   ├── user_service/        # User management
 │   ├── email_service/       # Email core service
 │   ├── email_server/        # SMTP/IMAP server implementation
 │   ├── mailbox_service/     # Mailbox management

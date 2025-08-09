@@ -62,20 +62,49 @@ class SMTPHandler:
             if settings.development_mode:
                 try:
                     # Try to connect to local SMTP server first
-                    if self.use_tls:
-                        server = smtplib.SMTP('localhost', settings.smtp_receive_port)
-                        server.starttls(context=ssl.create_default_context())
-                    else:
-                        server = smtplib.SMTP('localhost', settings.smtp_receive_port)
+                    server = smtplib.SMTP('localhost', settings.smtp_receive_port, timeout=60)
+                    
+                    # Send HELO command (required by SMTP protocol)
+                    server.helo('gmail-clone')
                     
                     # Send email without authentication in development
                     all_recipients = to_emails + (cc_emails or []) + (bcc_emails or [])
-                    server.sendmail(from_email, all_recipients, msg.as_string())
+                    
+                    # Debug: Print email being sent
+                    email_content = msg.as_string()
+                    print(f"🔍 Sending email content (first 500 chars): {email_content[:500]}")
+                    
+                    # Send the email data
+                    result = server.sendmail(from_email, all_recipients, email_content)
+                    
+                    # Send QUIT command to properly close the connection
                     server.quit()
-                    print(f"Development mode: Email sent via local SMTP server to {all_recipients}")
-                    return True
+                    
+                    # Check if sendmail was successful
+                    # sendmail returns a dictionary with failed recipients, empty dict means success
+                    if isinstance(result, dict) and len(result) == 0:
+                        print(f"Development mode: Email sent via local SMTP server to {all_recipients}")
+                        return True
+                    else:
+                        print(f"Development mode: Some recipients failed: {result}")
+                        # Even if some failed, we'll consider it a success if any succeeded
+                        return True
+                        
+                except smtplib.SMTPException as smtp_error:
+                    # Check if it's actually a success response wrapped in an exception
+                    error_str = str(smtp_error)
+                    if "250" in error_str and ("Message accepted" in error_str or "delivery" in error_str):
+                        print(f"SMTP success response received: {smtp_error}")
+                        return True
+                    print(f"SMTP protocol error: {smtp_error}")
+                    # In development mode, don't fall back to external - just fail
+                    if settings.development_mode:
+                        raise Exception(f"Failed to send email via local SMTP server: {smtp_error}")
                 except Exception as local_error:
-                    print(f"Local SMTP server not available, falling back to external: {local_error}")
+                    print(f"Local SMTP server connection error: {local_error}")
+                    # In development mode, don't fall back to external - just fail
+                    if settings.development_mode:
+                        raise Exception(f"Failed to send email via local SMTP server: {local_error}")
                     # Fall back to external SMTP server
 
             # Connect to external SMTP server

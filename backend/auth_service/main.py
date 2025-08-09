@@ -104,6 +104,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 # API endpoints
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "auth-service"}
+
 @app.post("/register", response_model=UserResponse)
 def register(user: UserCreate):
     try:
