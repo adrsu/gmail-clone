@@ -328,7 +328,11 @@ class EmailDatabase:
             "updated_at": datetime.utcnow().isoformat()
         }).eq("id", email_id).eq("user_id", user_id).execute()
         
-        return len(result.data) > 0
+        if len(result.data) > 0:
+            # Update folder counts after star toggle
+            await EmailDatabase.update_folder_counts(user_id)
+            return True
+        return False
 
     @staticmethod
     async def delete_email(email_id: str, user_id: str) -> bool:

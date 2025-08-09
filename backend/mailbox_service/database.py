@@ -32,7 +32,6 @@ class MailboxDatabase:
                 "user_id": user_id,
                 "icon": folder_data["icon"],
                 "color": folder_data["color"],
-                "folder_order": folder_data["order"],
                 "email_count": 0,
                 "unread_count": 0,
                 "created_at": now.isoformat(),
@@ -65,7 +64,6 @@ class MailboxDatabase:
             "parent_id": parent_id,
             "color": color,
             "icon": icon,
-            "folder_order": 999,  # Custom folders go at the end
             "email_count": 0,
             "unread_count": 0,
             "created_at": now.isoformat(),
@@ -82,7 +80,7 @@ class MailboxDatabase:
     @staticmethod
     async def get_folders(user_id: str) -> List[EmailFolder]:
         """Get all folders for a user"""
-        result = supabase.table("email_folders").select("*").eq("user_id", user_id).order("folder_order", desc=False).execute()
+        result = supabase.table("email_folders").select("*").eq("user_id", user_id).order("name", desc=False).execute()
         
         folders = []
         for record in result.data:

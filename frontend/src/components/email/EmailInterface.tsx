@@ -109,13 +109,23 @@ const EmailInterface: React.FC = () => {
         const data = await response.json();
         const foldersData = data.folders || [];
         
-        // Sort folders by folder_order, then by name for custom folders
+        // Sort folders in desired order: Inbox, Starred, Sent, Drafts, Spam, Trash, then custom folders
+        const systemFolderOrder = ['Inbox', 'Starred', 'Sent', 'Drafts', 'Spam', 'Trash'];
         const sortedFolders = foldersData.sort((a: any, b: any) => {
-          if (a.folder_order && b.folder_order) {
-            return a.folder_order - b.folder_order;
+          // System folders first, in the defined order
+          if (a.type === 'system' && b.type === 'system') {
+            const aOrder = systemFolderOrder.indexOf(a.name);
+            const bOrder = systemFolderOrder.indexOf(b.name);
+            if (aOrder !== -1 && bOrder !== -1) {
+              return aOrder - bOrder;
+            }
+            if (aOrder !== -1) return -1;
+            if (bOrder !== -1) return 1;
           }
-          if (a.folder_order && !b.folder_order) return -1;
-          if (!a.folder_order && b.folder_order) return 1;
+          // System folders before custom folders
+          if (a.type === 'system' && b.type !== 'system') return -1;
+          if (a.type !== 'system' && b.type === 'system') return 1;
+          // Custom folders sorted alphabetically
           return a.name.localeCompare(b.name);
         });
         
@@ -132,12 +142,12 @@ const EmailInterface: React.FC = () => {
       console.error('Error loading folders:', err);
       // Fallback to default folders if API fails
       const fallbackFolders = [
-        { id: 'inbox', name: 'Inbox', email_count: 0, unread_count: 0, icon: 'inbox', color: '#4285f4', folder_order: 1 },
-        { id: 'starred', name: 'Starred', email_count: 0, unread_count: 0, icon: 'star', color: '#ffd700', folder_order: 2 },
-        { id: 'sent', name: 'Sent', email_count: 0, unread_count: 0, icon: 'send', color: '#34a853', folder_order: 3 },
-        { id: 'drafts', name: 'Drafts', email_count: 0, unread_count: 0, icon: 'drafts', color: '#fbbc04', folder_order: 4 },
-        { id: 'spam', name: 'Spam', email_count: 0, unread_count: 0, icon: 'report', color: '#ff6b6b', folder_order: 5 },
-        { id: 'trash', name: 'Trash', email_count: 0, unread_count: 0, icon: 'delete', color: '#ea4335', folder_order: 6 },
+        { id: 'inbox', name: 'Inbox', email_count: 0, unread_count: 0, icon: 'inbox', color: '#4285f4', type: 'system' },
+        { id: 'starred', name: 'Starred', email_count: 0, unread_count: 0, icon: 'star', color: '#ffd700', type: 'system' },
+        { id: 'sent', name: 'Sent', email_count: 0, unread_count: 0, icon: 'send', color: '#34a853', type: 'system' },
+        { id: 'drafts', name: 'Drafts', email_count: 0, unread_count: 0, icon: 'drafts', color: '#fbbc04', type: 'system' },
+        { id: 'spam', name: 'Spam', email_count: 0, unread_count: 0, icon: 'report', color: '#ff6b6b', type: 'system' },
+        { id: 'trash', name: 'Trash', email_count: 0, unread_count: 0, icon: 'delete', color: '#ea4335', type: 'system' },
       ];
       setFolders(fallbackFolders);
       if (!currentFolder) {
