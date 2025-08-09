@@ -45,6 +45,48 @@ class MailboxDatabase:
         return folders
 
     @staticmethod
+    async def ensure_system_folders(user_id: str) -> None:
+        """Ensure all system folders exist for the user. Create any missing ones idempotently."""
+        # Define the canonical list of system folders
+        system_folders = [
+            {"name": "Inbox", "icon": "inbox", "color": "#4285f4", "order": 1},
+            {"name": "Starred", "icon": "star", "color": "#ffd700", "order": 2},
+            {"name": "Sent", "icon": "send", "color": "#34a853", "order": 3},
+            {"name": "Drafts", "icon": "drafts", "color": "#fbbc04", "order": 4},
+            {"name": "Spam", "icon": "report", "color": "#ff6b6b", "order": 5},
+            {"name": "Trash", "icon": "delete", "color": "#ea4335", "order": 6},
+        ]
+
+        # Fetch existing folders for the user
+        existing_result = supabase.table("email_folders").select("id,name,type").eq("user_id", user_id).execute()
+        existing_names = set()
+        for rec in existing_result.data or []:
+            # consider any folder with matching name as existing, regardless of type
+            name = rec.get("name")
+            if isinstance(name, str):
+                existing_names.add(name)
+
+        # Create only missing system folders
+        now = datetime.utcnow()
+        for folder_data in system_folders:
+            if folder_data["name"] in existing_names:
+                continue
+
+            folder_record = {
+                "id": str(uuid.uuid4()),
+                "name": folder_data["name"],
+                "type": FolderType.SYSTEM,
+                "user_id": user_id,
+                "icon": folder_data["icon"],
+                "color": folder_data["color"],
+                "email_count": 0,
+                "unread_count": 0,
+                "created_at": now.isoformat(),
+                "updated_at": now.isoformat(),
+            }
+            supabase.table("email_folders").insert(folder_record).execute()
+
+    @staticmethod
     async def create_custom_folder(
         user_id: str,
         name: str,
@@ -80,12 +122,16 @@ class MailboxDatabase:
     @staticmethod
     async def get_folders(user_id: str) -> List[EmailFolder]:
         """Get all folders for a user"""
+        # Ensure all required system folders exist (handles users created before new folders were added)
+        await MailboxDatabase.ensure_system_folders(user_id)
+
+        # Return updated list
         result = supabase.table("email_folders").select("*").eq("user_id", user_id).order("name", desc=False).execute()
-        
-        folders = []
-        for record in result.data:
+
+        folders: List[EmailFolder] = []
+        for record in result.data or []:
             folders.append(EmailFolder(**record))
-        
+
         return folders
 
     @staticmethod
