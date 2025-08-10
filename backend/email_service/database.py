@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any
 from supabase import create_client, Client
 from .models import EmailMessage, EmailStatus, EmailPriority, EmailAddress, EmailAttachment
 from shared.config import settings
+from shared.elasticsearch_service import elasticsearch_service
 
 # Helper function for user data enrichment
 
@@ -179,6 +180,12 @@ class EmailDatabase:
         result = supabase.table("emails").insert(email_record).execute()
         
         if result.data:
+            # Index the email in Elasticsearch
+            try:
+                await elasticsearch_service.index_email(result.data[0])
+            except Exception as e:
+                print(f"Failed to index email in Elasticsearch: {e}")
+            
             # Update folder counts after creating email
             await EmailDatabase.update_folder_counts(user_id)
             return EmailMessage(**result.data[0])
@@ -198,6 +205,44 @@ class EmailDatabase:
     ) -> List[EmailMessage]:
         """Get emails for a user with filtering and pagination"""
         
+        # If search is provided, use Elasticsearch
+        if search:
+            try:
+                # Search using Elasticsearch
+                search_result = await elasticsearch_service.search_emails(
+                    user_id=user_id,
+                    search_query=search,
+                    folder=folder,
+                    page=page,
+                    limit=limit,
+                    status=status.value if status else None,
+                    is_read=is_read,
+                    is_starred=is_starred
+                )
+                
+                # If no results from Elasticsearch, return empty list
+                if not search_result["email_ids"]:
+                    return []
+                
+                # Fetch the actual email data from Supabase using the IDs from Elasticsearch
+                email_ids = search_result["email_ids"]
+                result = supabase.table("emails").select("*").in_("id", email_ids).execute()
+                
+                # Sort the results to match the order from Elasticsearch
+                email_map = {email["id"]: email for email in result.data}
+                emails = []
+                for email_id in email_ids:
+                    if email_id in email_map:
+                        enriched_record = enrich_email_with_user_data(email_map[email_id])
+                        emails.append(EmailMessage(**enriched_record))
+                
+                return emails
+                
+            except Exception as e:
+                print(f"❌ [FALLBACK] Elasticsearch search failed, falling back to Supabase: {e}")
+                # Fall back to Supabase search if Elasticsearch fails
+        
+        # Use Supabase for non-search queries or as fallback
         query = supabase.table("emails").select("*").eq("user_id", user_id)
         
         # Apply folder filter
@@ -220,8 +265,9 @@ class EmailDatabase:
         if is_starred is not None:
             query = query.eq("is_starred", is_starred)
         
-        # Apply search
+        # Apply search (fallback to Supabase ilike)
         if search:
+            print(f"🔍 [SUPABASE] Using ilike search for: '{search}'")
             query = query.or_(f"subject.ilike.%{search}%,body.ilike.%{search}%")
         
         # Apply pagination
@@ -298,6 +344,12 @@ class EmailDatabase:
         result = supabase.table("emails").update(update_data).eq("id", email_id).eq("user_id", user_id).execute()
         
         if result.data:
+            # Update the email in Elasticsearch
+            try:
+                await elasticsearch_service.update_email(email_id, result.data[0])
+            except Exception as e:
+                print(f"Failed to update email in Elasticsearch: {e}")
+            
             # Update folder counts after updating email
             await EmailDatabase.update_folder_counts(user_id)
             return EmailMessage(**result.data[0])
@@ -311,7 +363,14 @@ class EmailDatabase:
             "updated_at": datetime.utcnow().isoformat()
         }).eq("id", email_id).eq("user_id", user_id).execute()
         
-        return len(result.data) > 0
+        if len(result.data) > 0:
+            # Update the email in Elasticsearch
+            try:
+                await elasticsearch_service.update_email(email_id, result.data[0])
+            except Exception as e:
+                print(f"Failed to update email in Elasticsearch: {e}")
+            return True
+        return False
 
     @staticmethod
     async def toggle_star(email_id: str, user_id: str) -> bool:
@@ -329,6 +388,12 @@ class EmailDatabase:
         }).eq("id", email_id).eq("user_id", user_id).execute()
         
         if len(result.data) > 0:
+            # Update the email in Elasticsearch
+            try:
+                await elasticsearch_service.update_email(email_id, result.data[0])
+            except Exception as e:
+                print(f"Failed to update email in Elasticsearch: {e}")
+            
             # Update folder counts after star toggle
             await EmailDatabase.update_folder_counts(user_id)
             return True
@@ -343,14 +408,36 @@ class EmailDatabase:
         }).eq("id", email_id).eq("user_id", user_id).execute()
         
         if len(result.data) > 0:
+            # Update the email in Elasticsearch
+            try:
+                await elasticsearch_service.update_email(email_id, result.data[0])
+            except Exception as e:
+                print(f"Failed to update email in Elasticsearch: {e}")
+            
             # Update folder counts after moving to trash
             await EmailDatabase.update_folder_counts(user_id)
             return True
         return False
 
     @staticmethod
-    async def get_email_count(user_id: str, folder: str = "inbox") -> int:
+    async def get_email_count(user_id: str, folder: str = "inbox", search: Optional[str] = None) -> int:
         """Get email count for a folder"""
+        # If search is provided, use Elasticsearch to get count
+        if search:
+            try:
+                search_result = await elasticsearch_service.search_emails(
+                    user_id=user_id,
+                    search_query=search,
+                    folder=folder,
+                    page=1,
+                    limit=1  # We only need the count, not the actual results
+                )
+                return search_result["total"]
+            except Exception as e:
+                print(f"Elasticsearch count failed, falling back to Supabase: {e}")
+                # Fall back to Supabase count if Elasticsearch fails
+        
+        # Use Supabase for non-search queries or as fallback
         query = supabase.table("emails").select("id", count="exact").eq("user_id", user_id)
         
         if folder == "inbox":

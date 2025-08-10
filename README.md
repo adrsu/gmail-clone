@@ -51,7 +51,7 @@ This is a comprehensive mailing service application built with modern technologi
 - [x] Email Server Integration
 
 ### Phase 3: Advanced Features
-- [ ] Search functionality with Elasticsearch
+- [x] Search functionality with Elasticsearch
 - [ ] Real-time notifications with Supabase Realtime
 - [ ] File attachment handling
 - [ ] Email threading and organization
@@ -236,5 +236,46 @@ The application includes a complete SMTP/IMAP server implementation:
 - Production-grade security
 
 For detailed configuration and usage, see `backend/email_server/README.md`.
+
+## Elasticsearch Search Implementation
+
+The application now uses Elasticsearch for advanced search functionality, replacing the basic Supabase `ilike` search with full-text search capabilities.
+
+### Quick Setup
+
+1. **Start Elasticsearch (Docker):**
+   ```bash
+   docker-compose -f docker-compose.elasticsearch.yml up -d
+   ```
+
+2. **Add to your `.env` file:**
+   ```env
+   ELASTICSEARCH_URL=http://localhost:9200
+   ```
+
+3. **Initialize Elasticsearch:**
+   ```bash
+   cd backend
+   python init_elasticsearch.py
+   ```
+
+4. **Reindex existing emails (optional):**
+   ```bash
+   python init_elasticsearch.py --reindex
+   ```
+
+### Features
+
+- **Full-text search** across email subjects, bodies, and sender/recipient names
+- **Fuzzy matching** for typos and partial matches
+- **Relevance scoring** with subject field weighted higher
+- **Folder-specific filtering** (inbox, sent, drafts, etc.)
+- **Fallback to Supabase** if Elasticsearch is unavailable
+- **Real-time indexing** of new, updated, and deleted emails
+
+### Monitoring
+
+- **Kibana**: http://localhost:5601 (for search analytics)
+- **Elasticsearch API**: `curl http://localhost:9200/emails/_search`
 
 ---

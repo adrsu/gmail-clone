@@ -12,6 +12,7 @@ from .models import (
 from .database import EmailDatabase
 from .smtp_handler import SMTPHandler
 from shared.config import settings
+from shared.elasticsearch_service import elasticsearch_service
 
 app = FastAPI(title="Email Service", version="1.0.0")
 
@@ -26,6 +27,16 @@ app.add_middleware(
 
 # Initialize handlers
 smtp_handler = SMTPHandler()
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize Elasticsearch on startup"""
+    try:
+        await elasticsearch_service.create_index()
+        print("✅ Elasticsearch index initialized")
+    except Exception as e:
+        print(f"⚠️  Elasticsearch initialization failed: {e}")
+        print("⚠️  Search functionality will fall back to Supabase")
 
 
 @app.get("/health")
@@ -173,7 +184,7 @@ async def get_emails(
         )
         
         # Get total count for pagination
-        total = await EmailDatabase.get_email_count(user_id, folder)
+        total = await EmailDatabase.get_email_count(user_id, folder, search)
         
         return EmailListResponse(
             emails=emails,

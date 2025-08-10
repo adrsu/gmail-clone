@@ -161,7 +161,7 @@ const EmailList: React.FC<EmailListProps> = ({
               onClick={() => onEmailClick(email)}
             >
             {/* Checkbox */}
-            <Box sx={{ px: 1, display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ px: 1.9, display: 'flex', alignItems: 'center' }}>
               <Checkbox
                 checked={selectedEmails.includes(email.id)}
                 onChange={(e) => {
