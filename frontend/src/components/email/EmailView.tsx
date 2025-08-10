@@ -14,9 +14,9 @@ import {
   Report as ReportIcon,
   Delete as DeleteIcon,
   Mail as MailIcon,
+  MarkEmailUnread as MarkEmailUnreadIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
-  SentimentSatisfied as EmojiIcon,
   Reply as ReplyIcon,
   Forward as ForwardIcon,
   KeyboardArrowLeft as ChevronLeftIcon,
@@ -170,7 +170,7 @@ const EmailView: React.FC<EmailViewProps> = ({
             size="small" 
             sx={{ color: '#5f6368' }}
           >
-            <MailIcon />
+            <MarkEmailUnreadIcon />
           </IconButton>
         </Tooltip>
 
@@ -253,23 +253,24 @@ const EmailView: React.FC<EmailViewProps> = ({
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '13px' }}>
               {formatDate(email.created_at)}
             </Typography>
-            <IconButton 
-              onClick={() => onStarToggle(email.id)}
-              size="small" 
-              sx={{ color: '#5f6368' }}
-            >
-              {email.is_starred ? <StarIcon sx={{ color: '#fbbc04' }} /> : <StarBorderIcon />}
-            </IconButton>
-            <IconButton size="small" sx={{ color: '#5f6368' }}>
-              <EmojiIcon />
-            </IconButton>
-            <IconButton 
-              onClick={() => onReply(email)}
-              size="small" 
-              sx={{ color: '#5f6368' }}
-            >
-              <ReplyIcon />
-            </IconButton>
+            <Tooltip title={email.is_starred ? "Starred" : "Not starred"}>
+              <IconButton 
+                onClick={() => onStarToggle(email.id)}
+                size="small" 
+                sx={{ color: '#5f6368' }}
+              >
+                {email.is_starred ? <StarIcon sx={{ color: '#fbbc04' }} /> : <StarBorderIcon />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Reply">
+              <IconButton 
+                onClick={() => onReply(email)}
+                size="small" 
+                sx={{ color: '#5f6368' }}
+              >
+                <ReplyIcon />
+              </IconButton>
+            </Tooltip>
 
           </Box>
         </Box>
@@ -369,9 +370,6 @@ const EmailView: React.FC<EmailViewProps> = ({
         >
           Forward
         </Button>
-        <IconButton sx={{ color: '#5f6368' }}>
-          <EmojiIcon />
-        </IconButton>
       </Box>
     </Box>
   );

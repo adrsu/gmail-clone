@@ -313,7 +313,7 @@ const EmailList: React.FC<EmailListProps> = ({
                 </IconButton>
               </Tooltip>
 
-              <Tooltip title="Archive">
+              {/* <Tooltip title="Archive">
                 <IconButton
                   onClick={(e) => {
                     e.stopPropagation();
@@ -324,7 +324,7 @@ const EmailList: React.FC<EmailListProps> = ({
                 >
                   <ArchiveIcon />
                 </IconButton>
-              </Tooltip>
+              </Tooltip> */}
 
               <Tooltip title="Delete">
                 <IconButton
