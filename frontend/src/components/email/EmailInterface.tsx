@@ -389,6 +389,29 @@ const EmailInterface: React.FC = () => {
     }
   };
 
+  const handleDeleteDraft = async (draftId: string) => {
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
+    
+    try {
+      const response = await fetch(`${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.DELETE.replace('{id}', draftId)}?user_id=${user.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        await loadEmails();
+        await loadFolders(); // Refresh folder counts
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to delete draft');
+      }
+    } catch (err) {
+      console.error('Error deleting draft:', err);
+      throw err;
+    }
+  };
+
   const getFolderIcon = (iconName: string) => {
     switch (iconName) {
       case 'inbox':
@@ -951,7 +974,9 @@ const EmailInterface: React.FC = () => {
          }}
         onSend={handleSendEmail}
         onSaveDraft={handleSaveDraft}
+        onDeleteDraft={handleDeleteDraft}
         initialData={selectedEmail ? {
+          id: selectedEmail.id,
           subject: selectedEmail.subject,
           body: selectedEmail.body,
           to_addresses: selectedEmail.to_addresses.map(addr => addr.email),

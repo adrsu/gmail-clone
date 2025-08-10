@@ -1,28 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Box,
   TextField,
   Button,
-  Box,
   Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Typography,
   IconButton,
   Tooltip,
+  Typography,
+  Paper,
   Divider,
 } from '@mui/material';
 import {
   Send as SendIcon,
-  Save as SaveIcon,
   Close as CloseIcon,
   AttachFile as AttachFileIcon,
   Delete as DeleteIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  FormatBold as FormatBoldIcon,
+  FormatItalic as FormatItalicIcon,
+  FormatUnderlined as FormatUnderlineIcon,
+  FormatColorText as FormatColorTextIcon,
+  FormatAlignLeft as FormatAlignLeftIcon,
+  FormatAlignCenter as FormatAlignCenterIcon,
+  FormatAlignRight as FormatAlignRightIcon,
+  FormatListNumbered as FormatListNumberedIcon,
+  FormatListBulleted as FormatListBulletedIcon,
+  FormatIndentDecrease as FormatIndentDecreaseIcon,
+  FormatIndentIncrease as FormatIndentIncreaseIcon,
+  FormatQuote as FormatQuoteIcon,
+  StrikethroughS as StrikethroughSIcon,
+  Clear as ClearFormattingIcon,
+  Undo as UndoIcon,
+  Redo as RedoIcon,
+  Link as LinkIcon,
+  EmojiEmotions as EmojiEmotionsIcon,
+  DriveFolderUpload as DriveFolderUploadIcon,
+  Image as ImageIcon,
+  Lock as LockIcon,
+  Create as CreateIcon,
+  MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 
 interface ComposeEmailProps {
@@ -30,10 +47,12 @@ interface ComposeEmailProps {
   onClose: () => void;
   onSend: (emailData: EmailData) => void;
   onSaveDraft: (emailData: EmailData) => void;
+  onDeleteDraft?: (draftId: string) => Promise<void>;
   initialData?: Partial<EmailData>;
 }
 
 interface EmailData {
+  id?: string;
   subject: string;
   body: string;
   to_addresses: string[];
@@ -48,6 +67,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
   onClose,
   onSend,
   onSaveDraft,
+  onDeleteDraft,
   initialData,
 }) => {
   const [emailData, setEmailData] = useState<EmailData>({
@@ -64,6 +84,10 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
   const [currentCc, setCurrentCc] = useState('');
   const [currentBcc, setCurrentBcc] = useState('');
   const [sending, setSending] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showToField, setShowToField] = useState(false);
+  const [showCcField, setShowCcField] = useState(false);
+  const [showBccField, setShowBccField] = useState(false);
 
   // Reset form when initialData changes (when editing an email)
   useEffect(() => {
@@ -94,6 +118,10 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
       setCurrentTo('');
       setCurrentCc('');
       setCurrentBcc('');
+      setIsExpanded(false);
+      setShowToField(false);
+      setShowCcField(false);
+      setShowBccField(false);
     }
   }, [initialData, open]);
 
@@ -171,169 +199,413 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const handleClose = async () => {
+    // Check if there's any content to save as draft
+    const hasContent = emailData.subject.trim() || 
+                      emailData.body.trim() || 
+                      emailData.to_addresses.length > 0 || 
+                      emailData.cc_addresses.length > 0 || 
+                      emailData.bcc_addresses.length > 0 ||
+                      currentTo.trim() || 
+                      currentCc.trim() || 
+                      currentBcc.trim();
+
+    if (hasContent) {
+      // Add any pending email addresses before saving
+      const finalEmailData = { ...emailData };
+      
+      if (currentTo.trim()) {
+        const newTo = handleAddEmail('to_addresses', currentTo);
+        if (newTo === '') {
+          finalEmailData.to_addresses = [...emailData.to_addresses, currentTo.trim()];
+        }
+      }
+      
+      if (currentCc.trim()) {
+        const newCc = handleAddEmail('cc_addresses', currentCc);
+        if (newCc === '') {
+          finalEmailData.cc_addresses = [...emailData.cc_addresses, currentCc.trim()];
+        }
+      }
+      
+      if (currentBcc.trim()) {
+        const newBcc = handleAddEmail('bcc_addresses', currentBcc);
+        if (newBcc === '') {
+          finalEmailData.bcc_addresses = [...emailData.bcc_addresses, currentBcc.trim()];
+        }
+      }
+
+      try {
+        await onSaveDraft(finalEmailData);
+      } catch (error) {
+        console.error('Error saving draft:', error);
+      }
+    }
+    
+    onClose();
+  };
+
+  const handleDiscard = async () => {
+    // If we're editing an existing draft (initialData exists), delete it
+    if (initialData && initialData.id) {
+      try {
+        // Call the delete draft function (you'll need to add this to props)
+        if (onDeleteDraft) {
+          await onDeleteDraft(initialData.id);
+        }
+      } catch (error) {
+        console.error('Error deleting draft:', error);
+      }
+    }
+    
+    // Close without saving anything
+    onClose();
+  };
+
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">
-            {initialData ? 'Edit Email' : 'Compose Email'}
+    <>
+      <Paper
+        elevation={8}
+        sx={{
+          position: 'fixed',
+          bottom: 20,
+          right: 20,
+          width: isExpanded ? 600 : 500,
+          height: isExpanded ? 500 : 400,
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 1300,
+          borderRadius: '8px',
+          overflow: 'hidden',
+          border: '1px solid #e8eaed',
+          boxShadow: '0 8px 10px 1px rgba(0,0,0,0.14), 0 3px 14px 2px rgba(0,0,0,0.12), 0 5px 5px -3px rgba(0,0,0,0.2)',
+        }}
+      >
+        {/* Header */}
+        <Box
+          sx={{
+            backgroundColor: '#f8f9fa',
+            color: '#202124',
+            p: 1.5,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            cursor: 'move',
+            minHeight: '48px',
+            borderBottom: '1px solid #e8eaed',
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '14px' }}>
+            New Message
           </Typography>
-          <IconButton onClick={onClose}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {/* To Field */}
-          <Box>
-            <Typography variant="body2" color="textSecondary" gutterBottom>
-              To:
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-              {emailData.to_addresses.map((email, index) => (
-                <Chip
-                  key={index}
-                  label={email}
-                  onDelete={() => handleRemoveEmail('to_addresses', index)}
-                  color="primary"
-                  variant="outlined"
-                />
-              ))}
-            </Box>
-            <TextField
-              fullWidth
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <IconButton
               size="small"
-              placeholder="Enter email addresses"
-              value={currentTo}
-              onChange={(e) => setCurrentTo(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' || e.key === ',') {
-                  e.preventDefault();
-                  const newTo = handleAddEmail('to_addresses', currentTo);
-                  setCurrentTo(newTo);
-                }
+              sx={{ 
+                color: '#666', 
+                p: 0.5,
+                '&:hover': { backgroundColor: '#e8eaed' }
               }}
-              onBlur={() => {
-                const newTo = handleAddEmail('to_addresses', currentTo);
-                setCurrentTo(newTo);
-              }}
-            />
-          </Box>
-
-          {/* CC Field */}
-          <Box>
-            <Typography variant="body2" color="textSecondary" gutterBottom>
-              CC:
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-              {emailData.cc_addresses.map((email, index) => (
-                <Chip
-                  key={index}
-                  label={email}
-                  onDelete={() => handleRemoveEmail('cc_addresses', index)}
-                  variant="outlined"
-                />
-              ))}
-            </Box>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Enter CC email addresses"
-              value={currentCc}
-              onChange={(e) => setCurrentCc(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' || e.key === ',') {
-                  e.preventDefault();
-                  const newCc = handleAddEmail('cc_addresses', currentCc);
-                  setCurrentCc(newCc);
-                }
-              }}
-              onBlur={() => {
-                const newCc = handleAddEmail('cc_addresses', currentCc);
-                setCurrentCc(newCc);
-              }}
-            />
-          </Box>
-
-          {/* BCC Field */}
-          <Box>
-            <Typography variant="body2" color="textSecondary" gutterBottom>
-              BCC:
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-              {emailData.bcc_addresses.map((email, index) => (
-                <Chip
-                  key={index}
-                  label={email}
-                  onDelete={() => handleRemoveEmail('bcc_addresses', index)}
-                  variant="outlined"
-                />
-              ))}
-            </Box>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Enter BCC email addresses"
-              value={currentBcc}
-              onChange={(e) => setCurrentBcc(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' || e.key === ',') {
-                  e.preventDefault();
-                  const newBcc = handleAddEmail('bcc_addresses', currentBcc);
-                  setCurrentBcc(newBcc);
-                }
-              }}
-              onBlur={() => {
-                const newBcc = handleAddEmail('bcc_addresses', currentBcc);
-                setCurrentBcc(newBcc);
-              }}
-            />
-          </Box>
-
-          <Divider />
-
-          {/* Subject Field */}
-          <TextField
-            fullWidth
-            label="Subject"
-            value={emailData.subject}
-            onChange={(e) => setEmailData(prev => ({ ...prev, subject: e.target.value }))}
-          />
-
-          {/* Priority Field */}
-          <FormControl fullWidth size="small">
-            <InputLabel>Priority</InputLabel>
-            <Select
-              value={emailData.priority}
-              label="Priority"
-              onChange={(e) => setEmailData(prev => ({ ...prev, priority: e.target.value as any }))}
+              onClick={() => setIsExpanded(!isExpanded)}
             >
-              <MenuItem value="low">Low</MenuItem>
-              <MenuItem value="normal">Normal</MenuItem>
-              <MenuItem value="high">High</MenuItem>
-              <MenuItem value="urgent">Urgent</MenuItem>
-            </Select>
-          </FormControl>
+              {isExpanded ? <ExpandMoreIcon fontSize="small" /> : <ExpandLessIcon fontSize="small" />}
+            </IconButton>
+            <IconButton
+              size="small"
+              sx={{ 
+                color: '#666', 
+                p: 0.5,
+                '&:hover': { backgroundColor: '#e8eaed' }
+              }}
+              onClick={handleClose}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </Box>
 
-          {/* Body Field */}
-          <TextField
-            fullWidth
-            label="Message"
-            multiline
-            rows={8}
-            value={emailData.body}
-            onChange={(e) => setEmailData(prev => ({ ...prev, body: e.target.value }))}
-          />
+        {/* Content */}
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
+          {/* Recipients */}
+          <Box sx={{ p: 2, pb: 0 }}>
+            {!showToField ? (
+              // Initial state - just "Recipients" placeholder
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  minHeight: '32px', 
+                  borderBottom: '1px solid #e8eaed',
+                  cursor: 'text',
+                }}
+                onClick={() => setShowToField(true)}
+              >
+                <Typography variant="body2" sx={{ color: '#999', fontSize: '13px', flex: 1 }}>
+                  Recipients
+                </Typography>
+              </Box>
+            ) : (
+              // Show To field with Cc/Bcc options
+              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid #e8eaed' }}>
+                <Typography variant="body2" sx={{ color: '#666', minWidth: 60, fontSize: '13px' }}>
+                  To:
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, flex: 1, alignItems: 'center' }}>
+                  {emailData.to_addresses.map((email, index) => (
+                    <Chip
+                      key={index}
+                      label={email}
+                      onDelete={() => handleRemoveEmail('to_addresses', index)}
+                      size="small"
+                      sx={{ 
+                        height: 24, 
+                        fontSize: '12px',
+                        backgroundColor: '#e8eaed',
+                        '& .MuiChip-deleteIcon': {
+                          fontSize: '16px',
+                          color: '#666'
+                        }
+                      }}
+                    />
+                  ))}
+                  <TextField
+                    size="small"
+                    value={currentTo}
+                    onChange={(e) => setCurrentTo(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault();
+                        const newTo = handleAddEmail('to_addresses', currentTo);
+                        setCurrentTo(newTo);
+                      }
+                    }}
+                    onBlur={() => {
+                      const newTo = handleAddEmail('to_addresses', currentTo);
+                      setCurrentTo(newTo);
+                    }}
+                    sx={{
+                      flex: 1,
+                      '& .MuiOutlinedInput-root': {
+                        border: 'none',
+                        '& fieldset': { border: 'none' },
+                        '&:hover fieldset': { border: 'none' },
+                        '&.Mui-focused fieldset': { border: 'none' },
+                      },
+                      '& .MuiInputBase-input': {
+                        fontSize: '13px',
+                        padding: '4px 0',
+                      },
+                    }}
+                  />
+                </Box>
+                {/* Cc/Bcc options on the right */}
+                <Box sx={{ display: 'flex', gap: 2, ml: 2 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: showCcField ? '#666' : '#999',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      '&:hover': { color: '#666' },
+                    }}
+                    onClick={() => setShowCcField(!showCcField)}
+                  >
+                    Cc
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: showBccField ? '#666' : '#999',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      '&:hover': { color: '#666' },
+                    }}
+                    onClick={() => setShowBccField(!showBccField)}
+                  >
+                    Bcc
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+
+            {/* Cc Field - only show if clicked */}
+            {showCcField && (
+              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid #e8eaed' }}>
+                <Typography variant="body2" sx={{ color: '#666', minWidth: 60, fontSize: '13px' }}>
+                  Cc:
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, flex: 1, alignItems: 'center' }}>
+                  {emailData.cc_addresses.map((email, index) => (
+                    <Chip
+                      key={index}
+                      label={email}
+                      onDelete={() => handleRemoveEmail('cc_addresses', index)}
+                      size="small"
+                      sx={{ 
+                        height: 24, 
+                        fontSize: '12px',
+                        backgroundColor: '#e8eaed',
+                        '& .MuiChip-deleteIcon': {
+                          fontSize: '16px',
+                          color: '#666'
+                        }
+                      }}
+                    />
+                  ))}
+                  <TextField
+                    size="small"
+                    // placeholder="Enter CC email addresses"
+                    value={currentCc}
+                    onChange={(e) => setCurrentCc(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault();
+                        const newCc = handleAddEmail('cc_addresses', currentCc);
+                        setCurrentCc(newCc);
+                      }
+                    }}
+                    onBlur={() => {
+                      const newCc = handleAddEmail('cc_addresses', currentCc);
+                      setCurrentCc(newCc);
+                    }}
+                    sx={{
+                      flex: 1,
+                      '& .MuiOutlinedInput-root': {
+                        border: 'none',
+                        '& fieldset': { border: 'none' },
+                        '&:hover fieldset': { border: 'none' },
+                        '&.Mui-focused fieldset': { border: 'none' },
+                      },
+                      '& .MuiInputBase-input': {
+                        fontSize: '13px',
+                        padding: '4px 0',
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
+            )}
+
+            {/* Bcc Field - only show if clicked */}
+            {showBccField && (
+              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid #e8eaed' }}>
+                <Typography variant="body2" sx={{ color: '#666', minWidth: 60, fontSize: '13px' }}>
+                  Bcc:
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, flex: 1, alignItems: 'center' }}>
+                  {emailData.bcc_addresses.map((email, index) => (
+                    <Chip
+                      key={index}
+                      label={email}
+                      onDelete={() => handleRemoveEmail('bcc_addresses', index)}
+                      size="small"
+                      sx={{ 
+                        height: 24, 
+                        fontSize: '12px',
+                        backgroundColor: '#e8eaed',
+                        '& .MuiChip-deleteIcon': {
+                          fontSize: '16px',
+                          color: '#666'
+                        }
+                      }}
+                    />
+                  ))}
+                  <TextField
+                    size="small"
+                    // placeholder="Enter BCC email addresses"
+                    value={currentBcc}
+                    onChange={(e) => setCurrentBcc(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault();
+                        const newBcc = handleAddEmail('bcc_addresses', currentBcc);
+                        setCurrentBcc(newBcc);
+                      }
+                    }}
+                    onBlur={() => {
+                      const newBcc = handleAddEmail('bcc_addresses', currentBcc);
+                      setCurrentBcc(newBcc);
+                    }}
+                    sx={{
+                      flex: 1,
+                      '& .MuiOutlinedInput-root': {
+                        border: 'none',
+                        '& fieldset': { border: 'none' },
+                        '&:hover fieldset': { border: 'none' },
+                        '&.Mui-focused fieldset': { border: 'none' },
+                      },
+                      '& .MuiInputBase-input': {
+                        fontSize: '13px',
+                        padding: '4px 0',
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
+            )}
+
+            {/* Subject */}
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid #e8eaed' }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Subject"
+                value={emailData.subject}
+                onChange={(e) => setEmailData(prev => ({ ...prev, subject: e.target.value }))}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    border: 'none',
+                    '& fieldset': { border: 'none' },
+                    '&:hover fieldset': { border: 'none' },
+                    '&.Mui-focused fieldset': { border: 'none' },
+                  },
+                  '& .MuiInputBase-input': {
+                    fontSize: '13px',
+                    padding: '4px 0',
+                  },
+                }}
+              />
+
+            </Box>
+          </Box>
+
+          {/* Body */}
+          <Box sx={{ flex: 1, p: 2, pt: 1 }}>
+            <TextField
+              fullWidth
+              multiline
+              // placeholder="Write your message here..."
+              value={emailData.body}
+              onChange={(e) => setEmailData(prev => ({ ...prev, body: e.target.value }))}
+              sx={{
+                height: '100%',
+                '& .MuiOutlinedInput-root': {
+                  border: 'none',
+                  '& fieldset': { border: 'none' },
+                  '&:hover fieldset': { border: 'none' },
+                  '&.Mui-focused fieldset': { border: 'none' },
+                  height: '100%',
+                  padding: '0px 0px',
+                },
+                '& .MuiInputBase-input': {
+                  fontSize: '13px',
+                  lineHeight: 1.5,
+                  height: '100% !important',
+                  // padding: '15px 0px',
+                },
+              }}
+            />
+          </Box>
 
           {/* Attachments */}
           {emailData.attachments.length > 0 && (
-            <Box>
-              <Typography variant="body2" color="textSecondary" gutterBottom>
+            <Box sx={{ px: 2, pb: 1 }}>
+              <Typography variant="body2" sx={{ color: '#666', mb: 0.5, fontSize: '12px' }}>
                 Attachments:
               </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 {emailData.attachments.map((file, index) => (
                   <Box
                     key={index}
@@ -341,21 +613,22 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      p: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
+                      p: 0.5,
+                      border: '1px solid #e8eaed',
                       borderRadius: 1,
+                      fontSize: '12px',
+                      backgroundColor: '#f8f9fa',
                     }}
                   >
-                    <Typography variant="body2">
+                    <Typography variant="body2" sx={{ fontSize: '12px' }}>
                       {file.name} ({formatFileSize(file.size)})
                     </Typography>
                     <IconButton
                       size="small"
                       onClick={() => handleRemoveAttachment(index)}
-                      color="error"
+                      sx={{ p: 0.5 }}
                     >
-                      <DeleteIcon />
+                      <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Box>
                 ))}
@@ -363,45 +636,85 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
             </Box>
           )}
         </Box>
-      </DialogContent>
 
-      <DialogActions sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', gap: 1, flex: 1 }}>
-          <input
-            type="file"
-            multiple
-            style={{ display: 'none' }}
-            id="attachment-input"
-            onChange={handleAttachmentChange}
-          />
-          <label htmlFor="attachment-input">
-            <Tooltip title="Attach files">
-              <IconButton component="span">
-                <AttachFileIcon />
-              </IconButton>
-            </Tooltip>
-          </label>
-        </Box>
+        {/* Bottom Toolbar */}
+        <Box
+          sx={{
+            borderTop: '1px solid #e8eaed',
+            p: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#f8f9fa',
+            minHeight: '48px',
+          }}
+        >
+          {/* Left side - Send button and formatting tools */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button
+              variant="contained"
+              size="small"
+              disabled={sending || !emailData.subject.trim() || emailData.to_addresses.length === 0}
+              startIcon={<SendIcon />}
+              onClick={handleSend}
+              sx={{
+                backgroundColor: '#1a73e8',
+                color: 'white',
+                textTransform: 'none',
+                fontSize: '13px',
+                px: 2,
+                py: 0.5,
+                borderRadius: '4px',
+                '&:hover': {
+                  backgroundColor: '#1557b0',
+                },
+                '&:disabled': {
+                  backgroundColor: '#e8eaed',
+                  color: '#666',
+                },
+              }}
+            >
+              Send
+            </Button>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            onClick={handleSaveDraft}
-            disabled={sending}
-            startIcon={<SaveIcon />}
-          >
-            Save Draft
-          </Button>
-          <Button
-            onClick={handleSend}
-            variant="contained"
-            disabled={sending || !emailData.subject.trim() || emailData.to_addresses.length === 0}
-            startIcon={<SendIcon />}
-          >
-            {sending ? 'Sending...' : (initialData ? 'Update' : 'Send')}
-          </Button>
+            {/* Formatting toolbar */}
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <Tooltip title="Formatting options">
+                <IconButton size="small" sx={{ p: 0.5, color: '#666', '&:hover': { backgroundColor: '#e8eaed' } }}>
+                  <FormatBoldIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Attach files">
+                <IconButton size="small" sx={{ p: 0.5, color: '#666', '&:hover': { backgroundColor: '#e8eaed' } }}>
+                  <input
+                    type="file"
+                    multiple
+                    style={{ display: 'none' }}
+                    id="attachment-input"
+                    onChange={handleAttachmentChange}
+                  />
+                  <label htmlFor="attachment-input">
+                    <AttachFileIcon fontSize="small" />
+                  </label>
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Insert photo">
+                <IconButton size="small" sx={{ p: 0.5, color: '#666', '&:hover': { backgroundColor: '#e8eaed' } }}>
+                  <ImageIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+
+          {/* Right side - Discard button */}
+          <Tooltip title="Discard draft">
+            <IconButton size="small" onClick={handleDiscard} sx={{ p: 0.5, color: '#666', '&:hover': { backgroundColor: '#e8eaed' } }}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
-      </DialogActions>
-    </Dialog>
+      </Paper>
+    </>
   );
 };
 
