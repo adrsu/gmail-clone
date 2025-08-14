@@ -163,7 +163,7 @@ async def compose_email(
 async def get_emails(
     folder: str = Query("inbox", description="Email folder"),
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(5, ge=1, le=100, description="Items per page"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
     search: Optional[str] = Query(None, description="Search term"),
     status: Optional[EmailStatus] = Query(None, description="Email status filter"),
     is_read: Optional[bool] = Query(None, description="Read status filter"),
@@ -172,7 +172,7 @@ async def get_emails(
 ):
     """Get emails with filtering and pagination"""
     try:
-        emails = await EmailDatabase.get_emails(
+        emails = await EmailDatabase.get_emails_from_cache_or_db(
             user_id=user_id,
             folder=folder,
             page=page,

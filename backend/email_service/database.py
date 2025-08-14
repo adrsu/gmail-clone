@@ -5,6 +5,9 @@ from supabase import create_client, Client
 from .models import EmailMessage, EmailStatus, EmailPriority, EmailAddress, EmailAttachment
 from shared.config import settings
 from shared.elasticsearch_service import elasticsearch_service
+import redis
+import json
+from datetime import timedelta
 
 # Helper function for user data enrichment
 
@@ -143,6 +146,26 @@ def enrich_email_with_user_data(email_data: Dict) -> Dict:
         return email_data
 
 class EmailDatabase:
+    _redis_client = None
+    
+    @classmethod
+    def get_redis_client(cls):
+        """Get Redis client with lazy initialization"""
+        if cls._redis_client is None:
+            try:
+                cls._redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+                # Test the connection
+                cls._redis_client.ping()
+            except Exception as e:
+                print(f"Redis connection failed: {e}")
+                cls._redis_client = None
+        return cls._redis_client
+    
+    @staticmethod
+    def _get_cache_key(user_id: str, folder: str, page: int, limit: int, search: str = None) -> str:
+        """Generate cache key for email queries"""
+        search_part = f":search:{search}" if search else ""
+        return f"emails:{user_id}:{folder}:{page}:{limit}{search_part}"
     @staticmethod
     async def create_email(email_data: Dict[str, Any], user_id: str) -> EmailMessage:
         """Create a new email in the database"""
@@ -186,6 +209,8 @@ class EmailDatabase:
             except Exception as e:
                 print(f"Failed to index email in Elasticsearch: {e}")
             
+            # Invalidate cache for this user
+            EmailDatabase.invalidate_user_cache(user_id)
             # Update folder counts after creating email
             await EmailDatabase.update_folder_counts(user_id)
             return EmailMessage(**result.data[0])
@@ -193,11 +218,113 @@ class EmailDatabase:
             raise Exception("Failed to create email")
 
     @staticmethod
+    async def get_emails_from_cache_or_db(
+        user_id: str,
+        folder: str = "inbox",
+        page: int = 1,
+        limit: int = 20,
+        search: Optional[str] = None,
+        status: Optional[EmailStatus] = None,
+        is_read: Optional[bool] = None,
+        is_starred: Optional[bool] = None
+    ) -> List[EmailMessage]:
+        """Get emails with caching support"""
+        # Only cache simple queries (no search, first page)
+        should_cache = not search and page == 1 and not status and is_read is None and is_starred is None
+        
+        if should_cache:
+            redis_client = EmailDatabase.get_redis_client()
+            if redis_client:
+                cache_key = EmailDatabase._get_cache_key(user_id, folder, page, limit, search)
+                
+                # Try to get from cache first
+                try:
+                    cached_data = redis_client.get(cache_key)
+                    if cached_data:
+                        emails_data = json.loads(cached_data)
+                        # Convert datetime strings back to datetime objects
+                        for email_dict in emails_data:
+                            if 'created_at' in email_dict and isinstance(email_dict['created_at'], str):
+                                try:
+                                    email_dict['created_at'] = datetime.fromisoformat(email_dict['created_at'].replace('Z', '+00:00'))
+                                except:
+                                    pass  # Keep as string if parsing fails
+                            if 'updated_at' in email_dict and isinstance(email_dict['updated_at'], str):
+                                try:
+                                    email_dict['updated_at'] = datetime.fromisoformat(email_dict['updated_at'].replace('Z', '+00:00'))
+                                except:
+                                    pass  # Keep as string if parsing fails
+                        return [EmailMessage(**email) for email in emails_data]
+                except Exception as e:
+                    print(f"Cache read error: {e}")
+        
+        # Get from database
+        emails = await EmailDatabase.get_emails(
+            user_id, folder, page, limit, search, status, is_read, is_starred
+        )
+        
+        # Cache the results for 5 minutes (only simple queries)
+        if should_cache and emails:
+            redis_client = EmailDatabase.get_redis_client()
+            if redis_client:
+                try:
+                    # Convert emails to dict with proper datetime serialization
+                    emails_data = []
+                    for email in emails:
+                        email_dict = email.dict()
+                        # Convert datetime objects to ISO format strings
+                        if 'created_at' in email_dict and email_dict['created_at']:
+                            email_dict['created_at'] = email_dict['created_at'].isoformat() if hasattr(email_dict['created_at'], 'isoformat') else str(email_dict['created_at'])
+                        if 'updated_at' in email_dict and email_dict['updated_at']:
+                            email_dict['updated_at'] = email_dict['updated_at'].isoformat() if hasattr(email_dict['updated_at'], 'isoformat') else str(email_dict['updated_at'])
+                        emails_data.append(email_dict)
+                    
+                    redis_client.setex(
+                        cache_key, 
+                        300,  # 5 minutes in seconds
+                        json.dumps(emails_data, default=str)  # Use default=str as fallback
+                    )
+                except Exception as e:
+                    print(f"Cache write error: {e}")
+        
+        return emails
+
+    @staticmethod
+    def invalidate_user_cache(user_id: str):
+        """Invalidate all cached emails for a user"""
+        redis_client = EmailDatabase.get_redis_client()
+        if redis_client:
+            try:
+                # Find all keys for this user
+                pattern = f"emails:{user_id}:*"
+                keys = redis_client.keys(pattern)
+                if keys:
+                    redis_client.delete(*keys)
+                    print(f"Invalidated {len(keys)} cache entries for user {user_id}")
+            except Exception as e:
+                print(f"Cache invalidation error: {e}")
+
+    @staticmethod
+    def invalidate_folder_cache(user_id: str, folder: str):
+        """Invalidate cached emails for a specific folder"""
+        redis_client = EmailDatabase.get_redis_client()
+        if redis_client:
+            try:
+                # Find all keys for this user and folder
+                pattern = f"emails:{user_id}:{folder}:*"
+                keys = redis_client.keys(pattern)
+                if keys:
+                    redis_client.delete(*keys)
+                    print(f"Invalidated {len(keys)} cache entries for user {user_id}, folder {folder}")
+            except Exception as e:
+                print(f"Cache invalidation error: {e}")
+
+    @staticmethod
     async def get_emails(
         user_id: str,
         folder: str = "inbox",
         page: int = 1,
-        limit: int = 5,
+        limit: int = 20,
         search: Optional[str] = None,
         status: Optional[EmailStatus] = None,
         is_read: Optional[bool] = None,
@@ -307,6 +434,8 @@ class EmailDatabase:
         }).eq("id", email_id).eq("user_id", user_id).execute()
         
         if len(result.data) > 0:
+            # Invalidate cache for this user
+            EmailDatabase.invalidate_user_cache(user_id)
             # Update folder counts after status change
             await EmailDatabase.update_folder_counts(user_id)
             return True

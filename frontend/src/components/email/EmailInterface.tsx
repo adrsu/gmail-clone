@@ -45,7 +45,7 @@ import {
   MarkEmailRead as MarkEmailReadIcon,
   MarkEmailUnread as MarkEmailUnreadIcon,
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import EmailList from './EmailList';
 import ComposeEmail from './ComposeEmail';
 import EmailView from './EmailView';
@@ -54,10 +54,20 @@ import { config, API_ENDPOINTS } from '../../config/config';
 import { useSidebar } from '../layout/Layout';
 import { useSearch } from '../layout/Layout';
 import { Email, Folder } from '../../types/email';
+import { 
+  cacheEmails, 
+  setLoading as setEmailLoading, 
+  updateEmailInCache, 
+  removeEmailFromCache,
+  clearFolderCache,
+  setError as setEmailError 
+} from '../../store/slices/emailSlice';
 
 
 const EmailInterface: React.FC = () => {
+  const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { cache, loading: emailLoading } = useSelector((state: RootState) => state.email);
   const { sidebarCollapsed } = useSidebar();
   const { searchQuery } = useSearch();
   
@@ -96,6 +106,23 @@ const EmailInterface: React.FC = () => {
       loadEmails();
     }
   }, [currentFolder, searchQuery, user?.id, currentPage]);
+
+  // Preload adjacent folders when current folder changes
+  useEffect(() => {
+    if (currentFolder && folders.length > 0 && user?.id) {
+      const currentIndex = folders.findIndex(f => f.id === currentFolder);
+      if (currentIndex !== -1) {
+        // Preload next folder
+        if (currentIndex + 1 < folders.length) {
+          preloadFolder(folders[currentIndex + 1].id);
+        }
+        // Preload previous folder
+        if (currentIndex - 1 >= 0) {
+          preloadFolder(folders[currentIndex - 1].id);
+        }
+      }
+    }
+  }, [currentFolder, folders, user?.id]);
 
   // Load folders when component mounts or user changes
   useEffect(() => {
@@ -166,36 +193,93 @@ const EmailInterface: React.FC = () => {
     }
   };
 
+  const preloadFolder = async (folderId: string) => {
+    // Only preload if not already cached or cache is stale (older than 5 minutes)
+    const cached = cache[folderId];
+    if (!cached || Date.now() - cached.lastFetched > 5 * 60 * 1000) {
+      try {
+        const folderData = folders.find(f => f.id === folderId);
+        const folderName = folderData?.name?.toLowerCase() || 'inbox';
+        
+        const response = await fetch(
+          `${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.LIST}?folder=${folderName}&user_id=${user?.id}&page=1&limit=${limit}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          dispatch(cacheEmails({
+            folderId,
+            emails: data.emails || [],
+            total: data.total || 0,
+            hasMore: data.has_more || false,
+            page: 1,
+          }));
+        }
+      } catch (error) {
+        console.error('Preload failed for folder:', folderId, error);
+      }
+    }
+  };
+
   const loadEmails = async () => {
     // Don't load emails if user is not authenticated or no folder is selected
     if (!user?.id || !currentFolder) {
       setEmails([]);
       return;
     }
-    
+
+    // Check if we have cached data and it's fresh (less than 5 minutes old)
+    const cached = cache[currentFolder];
+    if (cached && Date.now() - cached.lastFetched < 5 * 60 * 1000 && !searchQuery && currentPage === 1) {
+      // Use cached data immediately for instant switching
+      setEmails(cached.emails);
+      setTotalEmails(cached.total);
+      setHasMore(cached.hasMore);
+      return;
+    }
+
+    // Load fresh data
+    dispatch(setEmailLoading(true));
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Find the folder name from the current folder ID
       const currentFolderData = folders.find(f => f.id === currentFolder);
       const folderName = currentFolderData?.name?.toLowerCase() || 'inbox';
       
-      const response = await fetch(`${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.LIST}?folder=${folderName}&search=${searchQuery}&user_id=${user.id}&page=${currentPage}&limit=${limit}`);
+      const response = await fetch(
+        `${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.LIST}?folder=${folderName}&search=${searchQuery}&user_id=${user.id}&page=${currentPage}&limit=${limit}`
+      );
+      
       if (response.ok) {
         const data = await response.json();
-        setEmails(data.emails || []);
+        const emailsData = data.emails || [];
+        
+        setEmails(emailsData);
         setTotalEmails(data.total || 0);
         setHasMore(data.has_more || false);
+        
+        // Cache the results (only cache first page without search)
+        if (currentPage === 1 && !searchQuery) {
+          dispatch(cacheEmails({
+            folderId: currentFolder,
+            emails: emailsData,
+            total: data.total || 0,
+            hasMore: data.has_more || false,
+            page: currentPage,
+          }));
+        }
       } else {
         throw new Error('Failed to load emails');
       }
     } catch (err) {
       console.error('Error loading emails:', err);
       setError('Failed to load emails');
+      dispatch(setEmailError('Failed to load emails'));
       setEmails([]);
     } finally {
       setLoading(false);
+      dispatch(setEmailLoading(false));
     }
   };
 
@@ -255,65 +339,189 @@ const EmailInterface: React.FC = () => {
     setComposeOpen(true);
   };
 
+  const handleFolderChange = (folderId: string) => {
+    setCurrentFolder(folderId);
+    setViewEmail(null);
+    
+    // Show cached content immediately if available
+    const cached = cache[folderId];
+    if (cached && Date.now() - cached.lastFetched < 5 * 60 * 1000) {
+      setEmails(cached.emails);
+      setTotalEmails(cached.total);
+      setHasMore(cached.hasMore);
+    } else {
+      // Show loading state only if no cache
+      setEmails([]);
+    }
+    
+    // Load fresh data in background will be handled by useEffect
+  };
+
   const handleStarToggle = async (emailId: string) => {
+    // Optimistically update UI first
+    const email = emails.find(e => e.id === emailId);
+    if (email) {
+      const newStarredState = !email.is_starred;
+      
+      setEmails(prev => prev.map(email => 
+        email.id === emailId 
+          ? { ...email, is_starred: newStarredState }
+          : email
+      ));
+      
+      // Update viewEmail if it's the currently viewed email
+      setViewEmail(prev => 
+        prev && prev.id === emailId 
+          ? { ...prev, is_starred: newStarredState }
+          : prev
+      );
+
+      // Update cache
+      dispatch(updateEmailInCache({
+        emailId,
+        updates: { is_starred: newStarredState }
+      }));
+    }
+
     try {
       const response = await fetch(`${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.MARK_STAR.replace('{id}', emailId)}?user_id=${user?.id}`, {
         method: 'PUT',
       });
       
       if (response.ok) {
-        setEmails(prev => prev.map(email => 
-          email.id === emailId 
-            ? { ...email, is_starred: !email.is_starred }
-            : email
-        ));
-        
-        // Update viewEmail if it's the currently viewed email
-        setViewEmail(prev => 
-          prev && prev.id === emailId 
-            ? { ...prev, is_starred: !prev.is_starred }
-            : prev
-        );
-        
         await loadFolders(); // Refresh folder counts
+      } else {
+        // Revert optimistic update on error
+        if (email) {
+          setEmails(prev => prev.map(e => 
+            e.id === emailId 
+              ? { ...e, is_starred: email.is_starred }
+              : e
+          ));
+          
+          setViewEmail(prev => 
+            prev && prev.id === emailId 
+              ? { ...prev, is_starred: email.is_starred }
+              : prev
+          );
+
+          dispatch(updateEmailInCache({
+            emailId,
+            updates: { is_starred: email.is_starred }
+          }));
+        }
       }
     } catch (err) {
       console.error('Error toggling star:', err);
+      // Revert optimistic update on error
+      if (email) {
+        setEmails(prev => prev.map(e => 
+          e.id === emailId 
+            ? { ...e, is_starred: email.is_starred }
+            : e
+        ));
+        
+        setViewEmail(prev => 
+          prev && prev.id === emailId 
+            ? { ...prev, is_starred: email.is_starred }
+            : prev
+        );
+
+        dispatch(updateEmailInCache({
+          emailId,
+          updates: { is_starred: email.is_starred }
+        }));
+      }
     }
   };
 
   const handleDeleteEmail = async (emailId: string) => {
+    // Optimistically remove from UI first
+    const emailToDelete = emails.find(e => e.id === emailId);
+    setEmails(prev => prev.filter(email => email.id !== emailId));
+    setSelectedEmails(prev => prev.filter(id => id !== emailId));
+    
+    // Remove from cache
+    dispatch(removeEmailFromCache(emailId));
+
     try {
       const response = await fetch(`${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.DELETE.replace('{id}', emailId)}?user_id=${user?.id}`, {
         method: 'DELETE',
       });
       
       if (response.ok) {
-        setEmails(prev => prev.filter(email => email.id !== emailId));
-        setSelectedEmails(prev => prev.filter(id => id !== emailId));
         await loadFolders(); // Refresh folder counts
+      } else {
+        // Revert optimistic update on error
+        if (emailToDelete) {
+          setEmails(prev => [...prev, emailToDelete].sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          ));
+        }
       }
     } catch (err) {
       console.error('Error deleting email:', err);
+      // Revert optimistic update on error
+      if (emailToDelete) {
+        setEmails(prev => [...prev, emailToDelete].sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ));
+      }
     }
   };
 
   const handleMarkAsRead = async (emailId: string, isRead: boolean) => {
+    // Optimistically update UI first
+    const email = emails.find(e => e.id === emailId);
+    setEmails(prev => prev.map(email => 
+      email.id === emailId 
+        ? { ...email, is_read: isRead }
+        : email
+    ));
+
+    // Update cache
+    dispatch(updateEmailInCache({
+      emailId,
+      updates: { is_read: isRead }
+    }));
+
     try {
       const response = await fetch(`${config.EMAIL_SERVICE_URL}${API_ENDPOINTS.EMAILS.MARK_READ.replace('{id}', emailId)}?is_read=${isRead}&user_id=${user?.id}`, {
         method: 'PUT',
       });
       
       if (response.ok) {
-        setEmails(prev => prev.map(email => 
-          email.id === emailId 
-            ? { ...email, is_read: isRead }
-            : email
-        ));
         await loadFolders(); // Refresh folder counts to update unread count
+      } else {
+        // Revert optimistic update on error
+        if (email) {
+          setEmails(prev => prev.map(e => 
+            e.id === emailId 
+              ? { ...e, is_read: email.is_read }
+              : e
+          ));
+          
+          dispatch(updateEmailInCache({
+            emailId,
+            updates: { is_read: email.is_read }
+          }));
+        }
       }
     } catch (err) {
       console.error('Error marking as read:', err);
+      // Revert optimistic update on error
+      if (email) {
+        setEmails(prev => prev.map(e => 
+          e.id === emailId 
+            ? { ...e, is_read: email.is_read }
+            : e
+        ));
+        
+        dispatch(updateEmailInCache({
+          emailId,
+          updates: { is_read: email.is_read }
+        }));
+      }
     }
   };
 
@@ -573,10 +781,7 @@ const EmailInterface: React.FC = () => {
               <ListItem key={folder.id} disablePadding>
                 <ListItemButton
                   selected={currentFolder === folder.id}
-                  onClick={() => {
-                    setCurrentFolder(folder.id);
-                    setViewEmail(null); // Close email view when switching folders
-                  }}
+                  onClick={() => handleFolderChange(folder.id)}
                   sx={{
                     mx: sidebarCollapsed ? 1 : 1,
                     borderRadius: sidebarCollapsed ? '100%' : '0 16px 16px 0',
