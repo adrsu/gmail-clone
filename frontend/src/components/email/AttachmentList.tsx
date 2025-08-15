@@ -218,21 +218,20 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                   {/* Actions */}
                   {showActions && (
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                      {isImageFile(attachment) && (
-                        <Tooltip title="View">
-                          <IconButton
-                            size="small"
-                            onClick={() => window.open(getPreviewUrl(attachment), '_blank')}
-                            sx={{
-                              p: 0.5,
-                              color: '#666',
-                              '&:hover': { backgroundColor: '#e8eaed' },
-                            }}
-                          >
-                            <ViewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                      {/* View/Preview Icon - Show for ALL file types, not just images */}
+                      <Tooltip title="Preview">
+                        <IconButton
+                          size="small"
+                          onClick={() => window.open(getPreviewUrl(attachment), '_blank')}
+                          sx={{
+                            p: 0.5,
+                            color: '#666',
+                            '&:hover': { backgroundColor: '#e8eaed' },
+                          }}
+                        >
+                          <ViewIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       
                       <Tooltip title="Download">
                         <IconButton
@@ -334,6 +333,21 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
               {/* Actions */}
               {showActions && (
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  {/* Preview Icon - Show for ALL file types */}
+                  <Tooltip title="Preview">
+                    <IconButton
+                      size="small"
+                      onClick={() => window.open(getPreviewUrl(attachment), '_blank')}
+                      sx={{
+                        p: 0.5,
+                        color: '#666',
+                        '&:hover': { backgroundColor: '#e8eaed' },
+                      }}
+                    >
+                      <ViewIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  
                   <Tooltip title="Download">
                     <IconButton
                       size="small"

@@ -67,13 +67,27 @@ class AttachmentHandler:
                     )
                     # Generate presigned URL for secure access (expires in 1 hour)
                     try:
+                        # Determine content disposition based on file type
+                        if content_type.startswith('image/'):
+                            # Images: inline display
+                            content_disposition = f'inline; filename="{file.filename or "attachment"}"'
+                        elif content_type.startswith('text/'):
+                            # Text files: inline display for preview
+                            content_disposition = f'inline; filename="{file.filename or "attachment"}"'
+                        elif content_type in ['application/pdf', 'application/json', 'application/xml']:
+                            # PDF and structured documents: inline for browser preview
+                            content_disposition = f'inline; filename="{file.filename or "attachment"}"'
+                        else:
+                            # Other files: attachment (download)
+                            content_disposition = f'attachment; filename="{file.filename or "attachment"}"'
+                        
                         file_url = self.s3_client.generate_presigned_url(
                             'get_object',
                             Params={
                                 'Bucket': settings.S3_BUCKET, 
                                 'Key': s3_key,
                                 'ResponseContentType': content_type,  # Ensure proper MIME type
-                                'ResponseContentDisposition': f'inline; filename="{file.filename or "attachment"}"'  # Force inline display for images
+                                'ResponseContentDisposition': content_disposition  # Appropriate display method
                             },
                             ExpiresIn=300  # 5 minutes
                         )
@@ -148,13 +162,27 @@ class AttachmentHandler:
                             content_type = head_response.get('ContentType', 'application/octet-stream')
                             original_filename = head_response.get('Metadata', {}).get('original_filename', 'attachment')
                             
+                            # Determine content disposition based on file type
+                            if content_type.startswith('image/'):
+                                # Images: inline display
+                                content_disposition = f'inline; filename="{original_filename}"'
+                            elif content_type.startswith('text/'):
+                                # Text files: inline display for preview
+                                content_disposition = f'inline; filename="{original_filename}"'
+                            elif content_type in ['application/pdf', 'application/json', 'application/xml']:
+                                # PDF and structured documents: inline for browser preview
+                                content_disposition = f'inline; filename="{original_filename}"'
+                            else:
+                                # Other files: attachment (download)
+                                content_disposition = f'attachment; filename="{original_filename}"'
+                            
                             presigned_url = self.s3_client.generate_presigned_url(
                                 'get_object',
                                 Params={
                                     'Bucket': settings.S3_BUCKET, 
                                     'Key': s3_key,
                                     'ResponseContentType': content_type,  # Ensure proper MIME type
-                                    'ResponseContentDisposition': f'inline; filename="{original_filename}"'  # Force inline display
+                                    'ResponseContentDisposition': content_disposition  # Appropriate display method
                                 },
                                 ExpiresIn=3600  # 1 hour
                             )
