@@ -107,6 +107,23 @@ const EmailInterface: React.FC = () => {
     }
   }, [currentFolder, searchQuery, user?.id, currentPage]);
 
+  // Periodic refresh for frequently updated folders
+  useEffect(() => {
+    if (!user?.id || !currentFolder) return;
+
+    // Only set up periodic refresh for sent and drafts folders
+    if (currentFolder === 'sent' || currentFolder === 'drafts') {
+      const interval = setInterval(() => {
+        // Only refresh if we're not currently loading and no search is active
+        if (!loading && !searchQuery) {
+          loadEmails(true);
+        }
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [currentFolder, user?.id, loading, searchQuery]);
+
   // Preload adjacent folders when current folder changes
   useEffect(() => {
     if (currentFolder && folders.length > 0 && user?.id) {
@@ -221,7 +238,7 @@ const EmailInterface: React.FC = () => {
     }
   };
 
-  const loadEmails = async () => {
+  const loadEmails = async (forceRefresh = false) => {
     // Don't load emails if user is not authenticated or no folder is selected
     if (!user?.id || !currentFolder) {
       setEmails([]);
@@ -230,7 +247,7 @@ const EmailInterface: React.FC = () => {
 
     // Check if we have cached data and it's fresh (less than 5 minutes old)
     const cached = cache[currentFolder];
-    if (cached && Date.now() - cached.lastFetched < 5 * 60 * 1000 && !searchQuery && currentPage === 1) {
+    if (!forceRefresh && cached && Date.now() - cached.lastFetched < 5 * 60 * 1000 && !searchQuery && currentPage === 1) {
       // Use cached data immediately for instant switching
       setEmails(cached.emails);
       setTotalEmails(cached.total);
@@ -343,7 +360,7 @@ const EmailInterface: React.FC = () => {
     setCurrentFolder(folderId);
     setViewEmail(null);
     
-    // Show cached content immediately if available
+    // Show cached content immediately if available and fresh
     const cached = cache[folderId];
     if (cached && Date.now() - cached.lastFetched < 5 * 60 * 1000) {
       setEmails(cached.emails);
@@ -354,7 +371,35 @@ const EmailInterface: React.FC = () => {
       setEmails([]);
     }
     
+    // Force refresh for frequently updated folders (sent, drafts)
+    if (shouldRefreshFolder(folderId)) {
+      // Clear cache to force fresh load
+      dispatch(clearFolderCache(folderId));
+    }
+    
     // Load fresh data in background will be handled by useEffect
+  };
+
+  // Function to invalidate cache for specific folders
+  const invalidateFolderCache = (folderIds: string[]) => {
+    folderIds.forEach(folderId => {
+      dispatch(clearFolderCache(folderId));
+    });
+  };
+
+  // Function to check if folder cache needs refresh based on folder type
+  const shouldRefreshFolder = (folderId: string) => {
+    // Always refresh sent and drafts folders when switching to them
+    // as they are frequently updated
+    if (folderId === 'sent' || folderId === 'drafts') {
+      return true;
+    }
+    
+    // For other folders, check if cache is stale (older than 2 minutes)
+    const cached = cache[folderId];
+    if (!cached) return true;
+    
+    return Date.now() - cached.lastFetched > 2 * 60 * 1000; // 2 minutes
   };
 
   const handleStarToggle = async (emailId: string) => {
@@ -549,8 +594,16 @@ const EmailInterface: React.FC = () => {
       });
       
       if (response.ok) {
-        await loadEmails();
-        await loadFolders(); // Refresh folder counts
+        // Invalidate cache for sent folder and current folder
+        const foldersToInvalidate = ['sent'];
+        if (currentFolder !== 'sent') {
+          foldersToInvalidate.push(currentFolder);
+        }
+        invalidateFolderCache(foldersToInvalidate);
+        
+        // Refresh emails and folders with force refresh
+        await loadEmails(true);
+        await loadFolders();
       } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Failed to send email');
@@ -585,8 +638,15 @@ const EmailInterface: React.FC = () => {
       });
       
       if (response.ok) {
-        await loadEmails();
-        await loadFolders(); // Refresh folder counts
+        // Invalidate cache for drafts folder and current folder
+        const foldersToInvalidate = ['drafts'];
+        if (currentFolder !== 'drafts') {
+          foldersToInvalidate.push(currentFolder);
+        }
+        invalidateFolderCache(foldersToInvalidate);
+        
+        await loadEmails(true);
+        await loadFolders();
       } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Failed to save draft');
@@ -608,8 +668,15 @@ const EmailInterface: React.FC = () => {
       });
       
       if (response.ok) {
-        await loadEmails();
-        await loadFolders(); // Refresh folder counts
+        // Invalidate cache for drafts folder and current folder
+        const foldersToInvalidate = ['drafts'];
+        if (currentFolder !== 'drafts') {
+          foldersToInvalidate.push(currentFolder);
+        }
+        invalidateFolderCache(foldersToInvalidate);
+        
+        await loadEmails(true);
+        await loadFolders();
       } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Failed to delete draft');
@@ -1078,20 +1145,20 @@ const EmailInterface: React.FC = () => {
                    </Box>
                  )}
 
-                 {/* Refresh button - only show when no emails are selected */}
-                 {selectedEmails.length === 0 && (
-                   <IconButton 
-                     onClick={loadEmails} 
-                     disabled={loading} 
-                     size="small" 
-                     sx={{ 
-                       color: '#5f6368',
-                       padding: '8px'
-                     }}
-                   >
-                     <RefreshIcon />
-                   </IconButton>
-                 )}
+                                   {/* Refresh button - only show when no emails are selected */}
+                  {selectedEmails.length === 0 && (
+                    <IconButton 
+                      onClick={() => loadEmails(true)} 
+                      disabled={loading} 
+                      size="small" 
+                      sx={{ 
+                        color: '#5f6368',
+                        padding: '8px'
+                      }}
+                    >
+                      <RefreshIcon />
+                    </IconButton>
+                  )}
 
                 {/* More options - only show when no emails are selected */}
                 {selectedEmails.length === 0 && (
@@ -1185,10 +1252,17 @@ const EmailInterface: React.FC = () => {
           subject: selectedEmail.subject,
           body: selectedEmail.body,
           to_addresses: selectedEmail.to_addresses.map(addr => addr.email),
-          cc_addresses: [], // You might want to add cc/bcc fields to your Email type
-          bcc_addresses: [],
-          priority: selectedEmail.priority as any,
-          attachments: [], // You might want to handle existing attachments
+          cc_addresses: selectedEmail.cc_addresses?.map(addr => addr.email) || [],
+          bcc_addresses: selectedEmail.bcc_addresses?.map(addr => addr.email) || [],
+          priority: selectedEmail.priority as 'low' | 'normal' | 'high' | 'urgent',
+          attachments: [], // File objects for new attachments
+          uploadedAttachments: selectedEmail.attachments.map(att => ({
+            id: att.id,
+            filename: att.filename,
+            content_type: att.content_type || 'application/octet-stream',
+            size: att.size,
+            url: att.url
+          })), // Convert existing attachments to Attachment format
         } : undefined}
       />
     </Box>

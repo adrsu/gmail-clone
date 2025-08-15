@@ -53,7 +53,7 @@ This is a comprehensive mailing service application built with modern technologi
 ### Phase 3: Advanced Features
 - [x] Search functionality with Elasticsearch
 - [ ] Real-time notifications with Supabase Realtime
-- [ ] File attachment handling
+- [x] File attachment handling
 - [ ] Email threading and organization
 
 ### Phase 4: Security & Optimization
@@ -210,6 +210,38 @@ gmail-clone/
 ├── docs/                    # Documentation
 └── scripts/                 # Setup and deployment scripts
 ```
+
+## File Attachment Handling
+
+The application now includes comprehensive file attachment functionality:
+
+### Backend Features
+- **File Upload**: Support for multiple file types (images, documents, videos, audio, archives)
+- **Storage Options**: Local file system or AWS S3 cloud storage
+- **File Validation**: Size limits (25MB default) and type restrictions
+- **Security**: User-based access control and secure file serving
+- **Metadata Management**: File information storage with content types and sizes
+
+### Frontend Features
+- **Drag & Drop**: Easy file attachment interface
+- **Progress Indicators**: Real-time upload progress with visual feedback
+- **File Previews**: Icons and metadata display for different file types
+- **Download Support**: One-click file downloads with proper naming
+- **Error Handling**: User-friendly error messages for upload failures
+
+### API Endpoints
+- `POST /attachments/upload` - Upload single file
+- `POST /attachments/upload-multiple` - Upload multiple files
+- `GET /attachments/{id}` - Get attachment metadata
+- `GET /attachments/{id}/download` - Download attachment file
+- `DELETE /attachments/{id}` - Delete attachment
+
+### Supported File Types
+- **Documents**: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT
+- **Images**: JPG, JPEG, PNG, GIF, BMP
+- **Media**: MP4, AVI, MOV, MP3, WAV, FLAC
+- **Archives**: ZIP, RAR, 7Z
+- **Other**: All common file types
 
 ## Email Server Features
 

@@ -9,6 +9,7 @@ import {
   Divider,
   Tooltip,
 } from '@mui/material';
+import AttachmentList from './AttachmentList';
 import {
   ArrowBack as ArrowBackIcon,
   Report as ReportIcon,
@@ -291,35 +292,20 @@ const EmailView: React.FC<EmailViewProps> = ({
           </Typography>
         </Box>
 
-        {/* Attachments */}
-        {email.attachments && email.attachments.length > 0 && (
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#202124' }}>
-              Attachments ({email.attachments.length})
-            </Typography>
-            {email.attachments.map((attachment) => (
-              <Box 
-                key={attachment.id}
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2, 
-                  p: 2, 
-                  border: '1px solid #e8eaed',
-                  borderRadius: 1,
-                  mb: 1,
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {attachment.filename}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  ({(attachment.size / 1024).toFixed(1)} KB)
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        )}
+                 {/* Attachments */}
+         {email.attachments && email.attachments.length > 0 && (
+           <Box sx={{ mb: 4 }}>
+             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#202124' }}>
+               Attachments ({email.attachments.length})
+             </Typography>
+             <AttachmentList
+               attachments={email.attachments}
+               userId="current-user-id" // TODO: Get actual user ID
+               showActions={true}
+               compact={false}
+             />
+           </Box>
+         )}
       </Box>
 
       {/* Bottom Action Buttons */}

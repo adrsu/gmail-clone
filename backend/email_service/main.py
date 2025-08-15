@@ -1,8 +1,10 @@
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, StreamingResponse
 from typing import List, Optional
 from datetime import datetime
 import uuid
+import io
 
 # Import models from the same directory
 from .models import (
@@ -11,6 +13,7 @@ from .models import (
 )
 from .database import EmailDatabase
 from .smtp_handler import SMTPHandler
+from .attachment_handler import attachment_handler
 from shared.config import settings
 from shared.elasticsearch_service import elasticsearch_service
 
@@ -89,6 +92,14 @@ async def compose_email(
         # In a real app, you'd get this from the user service
         from_address = EmailAddress(email=f"{user_id}@example.com", name=user_id)
         
+        # Get attachment metadata for the provided attachment IDs
+        attachments = []
+        if request.attachment_ids:
+            for attachment_id in request.attachment_ids:
+                attachment = await attachment_handler.get_attachment(attachment_id, user_id)
+                if attachment:
+                    attachments.append(attachment)
+        
         email_data = {
             "subject": request.subject,
             "body": request.body,
@@ -97,6 +108,7 @@ async def compose_email(
             "to_addresses": to_addresses,
             "cc_addresses": cc_addresses,
             "bcc_addresses": bcc_addresses,
+            "attachments": attachments,
             "status": EmailStatus.DRAFT if request.save_as_draft else EmailStatus.SENT,
             "priority": request.priority,
             "sent_at": datetime.utcnow() if not request.save_as_draft else None
@@ -396,6 +408,104 @@ async def test_smtp_connection():
         success = await smtp_handler.test_connection()
         return {"success": success, "message": "SMTP connection test completed"}
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Attachment endpoints
+@app.post("/attachments/upload")
+async def upload_attachment(
+    file: UploadFile = File(...),
+    user_id: str = Query(..., description="User ID")
+):
+    """Upload a file attachment"""
+    try:
+        attachment = await attachment_handler.save_attachment(file, user_id)
+        return attachment
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/attachments/upload-multiple")
+async def upload_multiple_attachments(
+    files: List[UploadFile] = File(...),
+    user_id: str = Query(..., description="User ID")
+):
+    """Upload multiple file attachments"""
+    try:
+        attachments = await attachment_handler.save_multiple_attachments(files, user_id)
+        return {"attachments": attachments}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/attachments/{attachment_id}")
+async def get_attachment(
+    attachment_id: str,
+    user_id: str = Query(..., description="User ID")
+):
+    """Get attachment metadata"""
+    try:
+        attachment = await attachment_handler.get_attachment(attachment_id, user_id)
+        if not attachment:
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        return attachment
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/attachments/{attachment_id}/download")
+async def download_attachment(
+    attachment_id: str,
+    user_id: str = Query(..., description="User ID")
+):
+    """Download attachment file"""
+    try:
+        # Get attachment metadata
+        attachment = await attachment_handler.get_attachment(attachment_id, user_id)
+        if not attachment:
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        
+        # Get file content
+        content = await attachment_handler.get_attachment_content(attachment_id, user_id)
+        if not content:
+            raise HTTPException(status_code=404, detail="Attachment file not found")
+        
+        # Return file as streaming response
+        return StreamingResponse(
+            io.BytesIO(content),
+            media_type=attachment["content_type"],
+            headers={
+                "Content-Disposition": f"attachment; filename=\"{attachment['filename']}\"",
+                "Content-Length": str(attachment["size"])
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/attachments/{attachment_id}")
+async def delete_attachment(
+    attachment_id: str,
+    user_id: str = Query(..., description="User ID")
+):
+    """Delete an attachment"""
+    try:
+        success = await attachment_handler.delete_attachment(attachment_id, user_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        
+        return {"message": "Attachment deleted successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

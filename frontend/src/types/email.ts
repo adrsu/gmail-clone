@@ -10,6 +10,14 @@ export interface Email {
     email: string;
     name?: string;
   }>;
+  cc_addresses?: Array<{
+    email: string;
+    name?: string;
+  }>;
+  bcc_addresses?: Array<{
+    email: string;
+    name?: string;
+  }>;
   is_read: boolean;
   is_starred: boolean;
   status: string;
@@ -18,7 +26,9 @@ export interface Email {
   attachments: Array<{
     id: string;
     filename: string;
+    content_type?: string;
     size: number;
+    url?: string;
   }>;
 }
 

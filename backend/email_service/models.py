@@ -62,6 +62,7 @@ class ComposeEmailRequest(BaseModel):
     bcc_addresses: List[str] = []
     priority: EmailPriority = EmailPriority.NORMAL
     save_as_draft: bool = False
+    attachment_ids: List[str] = []  # IDs of uploaded attachments
 
 
 class EmailListRequest(BaseModel):
