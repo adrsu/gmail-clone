@@ -145,6 +145,24 @@ async def compose_email(
         
         # Send email if not saving as draft
         if not request.save_as_draft:
+            # Prepare attachments with content for SMTP sending
+            smtp_attachments = []
+            for attachment_meta in attachments:
+                try:
+                    attachment_content = await attachment_handler.get_attachment_content(attachment_meta['id'], user_id)
+                    if attachment_content:
+                        smtp_attachments.append({
+                            'content': attachment_content,
+                            'filename': attachment_meta['filename'],
+                            'content_type': attachment_meta['content_type']
+                        })
+                        print(f"📎 Prepared attachment for SMTP: {attachment_meta['filename']}")
+                    else:
+                        print(f"❌ Failed to get content for attachment: {attachment_meta['filename']}")
+                except Exception as e:
+                    print(f"❌ Error preparing attachment {attachment_meta['filename']}: {e}")
+            
+            print(f"📧 Sending email with {len(smtp_attachments)} attachments")
             if not settings.development_mode:
                 # Production mode - actually send email via SMTP
                 try:
@@ -155,7 +173,8 @@ async def compose_email(
                         body=request.body,
                         html_body=request.html_body,
                         cc_emails=[addr.email for addr in cc_addresses],
-                        bcc_emails=[addr.email for addr in bcc_addresses]
+                        bcc_emails=[addr.email for addr in bcc_addresses],
+                        attachments=smtp_attachments
                     )
                     
                     if not success:
@@ -176,7 +195,8 @@ async def compose_email(
                         body=request.body,
                         html_body=request.html_body,
                         cc_emails=[addr.email for addr in cc_addresses],
-                        bcc_emails=[addr.email for addr in bcc_addresses]
+                        bcc_emails=[addr.email for addr in bcc_addresses],
+                        attachments=smtp_attachments
                     )
                     
                     if not success:
@@ -346,6 +366,14 @@ async def update_email(
             # Fallback if user not found
             from_address = EmailAddress(email=f"{user_id}@example.com", name=user_id)
         
+        # Get attachment metadata for the provided attachment IDs
+        attachments = []
+        if request.attachment_ids:
+            for attachment_id in request.attachment_ids:
+                attachment = await attachment_handler.get_attachment(attachment_id, user_id)
+                if attachment:
+                    attachments.append(attachment)
+        
         email_data = {
             "subject": request.subject,
             "body": request.body,
@@ -354,6 +382,7 @@ async def update_email(
             "to_addresses": to_addresses,
             "cc_addresses": cc_addresses,
             "bcc_addresses": bcc_addresses,
+            "attachments": attachments,
             "status": EmailStatus.DRAFT if request.save_as_draft else EmailStatus.SENT,
             "priority": request.priority,
         }
@@ -366,6 +395,24 @@ async def update_email(
         
         # Send email if not saving as draft
         if not request.save_as_draft:
+            # Prepare attachments with content for SMTP sending
+            smtp_attachments = []
+            for attachment_meta in attachments:
+                try:
+                    attachment_content = await attachment_handler.get_attachment_content(attachment_meta['id'], user_id)
+                    if attachment_content:
+                        smtp_attachments.append({
+                            'content': attachment_content,
+                            'filename': attachment_meta['filename'],
+                            'content_type': attachment_meta['content_type']
+                        })
+                        print(f"📎 Prepared attachment for SMTP: {attachment_meta['filename']}")
+                    else:
+                        print(f"❌ Failed to get content for attachment: {attachment_meta['filename']}")
+                except Exception as e:
+                    print(f"❌ Error preparing attachment {attachment_meta['filename']}: {e}")
+            
+            print(f"📧 Updating and sending email with {len(smtp_attachments)} attachments")
             if not settings.development_mode:
                 # Production mode - actually send email via SMTP
                 try:
@@ -376,7 +423,8 @@ async def update_email(
                         body=request.body,
                         html_body=request.html_body,
                         cc_emails=[addr.email for addr in cc_addresses],
-                        bcc_emails=[addr.email for addr in bcc_addresses]
+                        bcc_emails=[addr.email for addr in bcc_addresses],
+                        attachments=smtp_attachments
                     )
                     
                     if not success:
@@ -397,7 +445,8 @@ async def update_email(
                         body=request.body,
                         html_body=request.html_body,
                         cc_emails=[addr.email for addr in cc_addresses],
-                        bcc_emails=[addr.email for addr in bcc_addresses]
+                        bcc_emails=[addr.email for addr in bcc_addresses],
+                        attachments=smtp_attachments
                     )
                     
                     if not success:

@@ -14,7 +14,7 @@ class SMTPHandler:
         self.smtp_port = settings.smtp_port
         self.smtp_username = settings.smtp_username
         self.smtp_password = settings.smtp_password
-        self.use_tls = settings.smtp_use_tls
+        self.use_tls = getattr(settings, 'smtp_use_tls', True)
 
     async def send_email(
         self,
@@ -29,8 +29,14 @@ class SMTPHandler:
     ) -> bool:
         """Send email via SMTP"""
         try:
-            # Create message
-            msg = MIMEMultipart('alternative')
+            # Create message with proper MIME structure
+            if attachments and len(attachments) > 0:
+                # Use 'mixed' for emails with attachments
+                msg = MIMEMultipart('mixed')
+            else:
+                # Use 'alternative' for text/html only emails
+                msg = MIMEMultipart('alternative')
+                
             msg['From'] = from_email
             msg['To'] = ', '.join(to_emails)
             msg['Subject'] = subject
@@ -38,25 +44,41 @@ class SMTPHandler:
             if cc_emails:
                 msg['Cc'] = ', '.join(cc_emails)
 
-            # Add body
-            text_part = MIMEText(body, 'plain')
-            msg.attach(text_part)
-
+            # Create body container for text/html content
             if html_body:
-                html_part = MIMEText(html_body, 'html')
-                msg.attach(html_part)
+                # If we have both text and HTML, create an alternative container
+                body_container = MIMEMultipart('alternative')
+                body_container.attach(MIMEText(body, 'plain'))
+                body_container.attach(MIMEText(html_body, 'html'))
+                msg.attach(body_container)
+            else:
+                # Just plain text
+                msg.attach(MIMEText(body, 'plain'))
 
             # Add attachments
             if attachments:
+                print(f"📎 Adding {len(attachments)} attachments to email")
                 for attachment in attachments:
-                    part = MIMEBase('application', 'octet-stream')
-                    part.set_payload(attachment['content'])
-                    encoders.encode_base64(part)
-                    part.add_header(
-                        'Content-Disposition',
-                        f'attachment; filename= {attachment["filename"]}'
-                    )
-                    msg.attach(part)
+                    try:
+                        # Determine content type and disposition
+                        content_type = attachment.get('content_type', 'application/octet-stream')
+                        main_type, sub_type = content_type.split('/', 1) if '/' in content_type else ('application', 'octet-stream')
+                        
+                        part = MIMEBase(main_type, sub_type)
+                        part.set_payload(attachment['content'])
+                        encoders.encode_base64(part)
+                        
+                        part.add_header(
+                            'Content-Disposition',
+                            f'attachment; filename="{attachment["filename"]}"'
+                        )
+                        
+                        msg.attach(part)
+                        print(f"📎 Attached: {attachment['filename']} ({len(attachment['content'])} bytes, {content_type})")
+                        
+                    except Exception as e:
+                        print(f"❌ Error attaching file {attachment.get('filename', 'unknown')}: {e}")
+                        continue
 
             # In development mode, use local SMTP server if available
             if settings.development_mode:
@@ -73,6 +95,11 @@ class SMTPHandler:
                     # Debug: Print email being sent
                     email_content = msg.as_string()
                     print(f"🔍 Sending email content (first 500 chars): {email_content[:500]}")
+                    print(f"🔍 Email content structure:")
+                    lines = email_content.split('\n')
+                    for i, line in enumerate(lines[:20]):  # First 20 lines
+                        print(f"🔍 Line {i+1}: {repr(line)}")
+                    print(f"🔍 Total lines in email: {len(lines)}")
                     
                     # Send the email data
                     result = server.sendmail(from_email, all_recipients, email_content)

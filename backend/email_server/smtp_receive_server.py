@@ -62,6 +62,12 @@ class SMTPReceiveServer:
                 command = self._parse_command(line_str)
                 if not command:
                     print("❌ Invalid command")
+                    # Check if we're getting Base64 data - this suggests protocol breakdown
+                    if len(line_str) > 50 and line_str.replace('+', '').replace('/', '').replace('=', '').isalnum():
+                        print("❌ Detected Base64 data as command - SMTP protocol has broken down")
+                        print("❌ This suggests the client is sending email content without proper DATA handling")
+                        # Disconnect the client to prevent further protocol errors
+                        break
                     await self._send_response(writer, 500, "Invalid command")
                     continue
                 
@@ -86,31 +92,49 @@ class SMTPReceiveServer:
                     clean_recipient = self._clean_email_address(recipient)
                     if clean_recipient:
                         current_envelope.recipients.append(clean_recipient)
+                # Handle QUIT command specially
+                if command.command == "QUIT":
+                    await self._send_response(writer, response.code, response.message)
+                    print("🔍 Client sent QUIT - closing connection")
+                    break
+                    
                 # Handle DATA command specially
-                if command.command == "DATA" and response.code == 354:
+                elif command.command == "DATA" and response.code == 354:
                     # Send 354 response first
                     await self._send_response(writer, response.code, response.message)
                     print("🔍 About to read email data after sending 354 response...")
-                    # Read email data
-                    email_data = await self._read_email_data(reader)
-                    print(f"🔍 Email data reading completed, got {len(email_data)} bytes")
-                    if current_envelope:
-                        current_envelope.data = email_data
-                        # Process and store the email with timeout
-                        try:
-                            import asyncio
-                            await asyncio.wait_for(self._process_email(current_envelope), timeout=30.0)
-                            current_envelope = None
-                            # Send success response after processing
-                            print("🔍 Sending 250 success response...")
-                            await self._send_response(writer, 250, "Message accepted for delivery")
-                        except asyncio.TimeoutError:
-                            print("❌ Timeout processing email")
-                            await self._send_response(writer, 500, "Internal server error - timeout")
-                            current_envelope = None
-                    else:
-                        print("❌ No current envelope for DATA command")
-                        await self._send_response(writer, 500, "Internal server error - no envelope")
+                    try:
+                        # Read email data with better error handling
+                        email_data = await self._read_email_data(reader)
+                        print(f"🔍 Email data reading completed, got {len(email_data)} bytes")
+                        if current_envelope:
+                            current_envelope.data = email_data
+                            # Process and store the email with timeout
+                            try:
+                                import asyncio
+                                await asyncio.wait_for(self._process_email(current_envelope), timeout=30.0)
+                                current_envelope = None
+                                # Send success response after processing
+                                print("🔍 Sending 250 success response...")
+                                await self._send_response(writer, 250, "Message accepted for delivery")
+                                
+                                # After successful email processing, expect either QUIT or new MAIL command
+                                print("🔍 Email transaction completed successfully")
+                                
+                                # Small delay to allow client to send QUIT command
+                                await asyncio.sleep(0.1)
+                                
+                            except asyncio.TimeoutError:
+                                print("❌ Timeout processing email")
+                                await self._send_response(writer, 500, "Internal server error - timeout")
+                                current_envelope = None
+                        else:
+                            print("❌ No current envelope for DATA command")
+                            await self._send_response(writer, 500, "Internal server error - no envelope")
+                    except Exception as data_error:
+                        print(f"❌ Error reading email data: {data_error}")
+                        await self._send_response(writer, 500, "Error reading email data")
+                        current_envelope = None
                     continue  # Skip normal response sending for DATA command
                 else:
                     # Send normal response for all other commands
@@ -147,9 +171,32 @@ class SMTPReceiveServer:
         """Parse SMTP command line"""
         try:
             print(f"🔍 Parsing command line: '{line}'")
+            
+            # Check if this looks like Base64 data (common pattern in attachment errors)
+            if len(line) > 50 and line.replace('+', '').replace('/', '').replace('=', '').isalnum():
+                print(f"❌ Received what appears to be Base64 data as command: {line[:50]}...")
+                print("❌ This suggests the email data wasn't fully consumed during DATA phase")
+                print("❌ Ignoring this line and continuing to wait for proper SMTP commands")
+                return None
+            
+            # Check if line contains mostly non-ASCII or garbled data
+            if not line.replace(' ', '').replace('\t', '').isprintable():
+                print(f"❌ Received non-printable data as command: {repr(line)}")
+                return None
+            
             parts = line.split(' ', 1)
             command = parts[0].upper()
             arguments = parts[1].split(' ') if len(parts) > 1 else []
+            
+            # Validate that command looks like a real SMTP command
+            valid_smtp_commands = {
+                'HELO', 'EHLO', 'MAIL', 'RCPT', 'DATA', 'QUIT', 'RSET', 
+                'VRFY', 'EXPN', 'HELP', 'NOOP', 'AUTH', 'STARTTLS'
+            }
+            
+            if command not in valid_smtp_commands:
+                print(f"❌ Unknown SMTP command: {command}")
+                # Still return it so we can send proper error response
             
             print(f"✅ Parsed command: {command}, arguments: {arguments}")
             return SMTPCommand(command=command, arguments=arguments)
@@ -239,8 +286,9 @@ class SMTPReceiveServer:
             import asyncio
             print("🔍 Starting to read email data...")
             while True:
-                # Read line with timeout
-                print(f"🔍 Reading line {line_count + 1}...")
+                # Read line with timeout (reduce logging noise)
+                if line_count % 200 == 0:  # Log every 200 lines instead of every line
+                    print(f"🔍 Reading line {line_count + 1}...")
                 line = await asyncio.wait_for(reader.readline(), timeout=10.0)
                 line_count += 1
                 
@@ -248,29 +296,48 @@ class SMTPReceiveServer:
                     print(f"🔍 No more data after {line_count} lines")
                     break
                 
-                print(f"🔍 Received line {line_count}: {line[:100]}...")  # First 100 chars
+                # Only log first few lines and every 200th line to reduce noise
+                if line_count <= 5 or line_count % 200 == 0:
+                    print(f"🔍 Received line {line_count}: {line[:100]}...")
                 
-                # Check for end marker
+                # Check for end marker (SMTP DATA termination: single dot on its own line)
                 if line.strip() == b".":
-                    print("🔍 Found end marker '.'")
+                    print("🔍 Found end marker '.' - email data complete")
                     break
                 
-                # Remove leading dot if present (dot stuffing)
-                if line.startswith(b"."):
-                    line = line[1:]
+                # Remove leading dot if present (dot stuffing per RFC 5321)
+                if line.startswith(b".."):
+                    line = b"." + line[2:]  # Convert ".." back to "."
                 
                 data += line
                 
-                # Safety check to prevent infinite loops
-                if line_count > 1000:
-                    print("❌ Too many lines, breaking")
+                # Safety check to prevent runaway emails (increase limit significantly)
+                if line_count > 50000:  # Allow much larger emails with attachments
+                    print(f"❌ Email too large ({line_count} lines), breaking")
                     break
                     
         except asyncio.TimeoutError:
-            print(f"❌ Timeout reading email data after {line_count} lines, {len(data)} bytes received")
-            return data  # Return what we have so far
+            print(f"❌ Timeout reading email data after {line_count} lines")
+            return data
+        except Exception as e:
+            print(f"❌ Error reading email data: {e}")
+            return data
         
-        print(f"✅ Finished reading email data: {len(data)} bytes, {line_count} lines")
+        print(f"🔍 Email data reading completed: {len(data)} bytes total from {line_count} lines")
+        
+        # Ensure we've consumed all the email data properly
+        try:
+            # Check if there's any immediate data available that might cause protocol issues
+            if reader.at_eof():
+                print("🔍 Reader is at EOF - no more data")
+            else:
+                # Peek at buffer without consuming to see if there's unexpected data
+                buffered = len(reader._buffer) if hasattr(reader, '_buffer') else 0
+                if buffered > 0:
+                    print(f"⚠️ Warning: {buffered} bytes still in buffer after email data")
+        except:
+            pass  # Ignore errors in buffer inspection
+            
         return data
     
     async def _process_email(self, envelope: EmailEnvelope):
@@ -359,17 +426,18 @@ class SMTPReceiveServer:
                                 
                                 mock_file = MockUploadFile(content, filename, content_type)
                                 
-                                # Save attachment (this will use the default user ID for now)
-                                attachment_data = await attachment_handler.save_attachment(mock_file, self.default_user_id)
-                                
-                                if attachment_data:
-                                    attachments.append(attachment_data)
-                                    print(f"✅ Saved attachment: {filename} (ID: {attachment_id})")
-                                else:
-                                    print(f"❌ Failed to save attachment: {filename}")
+                                # Save attachment using a temporary user ID (we'll process this per recipient later)
+                                temp_attachment_data = {
+                                    'content': content,
+                                    'filename': filename,
+                                    'content_type': content_type,
+                                    'size': size
+                                }
+                                attachments.append(temp_attachment_data)
+                                print(f"📎 Found attachment: {filename} ({size} bytes)")
                                     
                             except Exception as e:
-                                print(f"❌ Error saving attachment {filename}: {e}")
+                                print(f"❌ Error processing attachment {filename}: {e}")
             else:
                 body = email_message.get_content()
             
@@ -395,6 +463,43 @@ class SMTPReceiveServer:
                 
                 print(f"✅ Found user_id {user_id} for recipient {recipient}")
                 
+                # Process attachments for this specific recipient
+                recipient_attachments = []
+                if attachments:
+                    print(f"📎 Processing {len(attachments)} attachments for recipient {recipient}")
+                    from email_service.attachment_handler import attachment_handler
+                    
+                    for attachment in attachments:
+                        try:
+                            # Create a mock UploadFile object for each attachment
+                            class MockUploadFile:
+                                def __init__(self, content, filename, content_type):
+                                    self.content = content
+                                    self.filename = filename
+                                    self.content_type = content_type
+                                    self.size = len(content)
+                                
+                                async def read(self):
+                                    return self.content
+                            
+                            mock_file = MockUploadFile(
+                                attachment['content'], 
+                                attachment['filename'], 
+                                attachment['content_type']
+                            )
+                            
+                            # Save attachment for this specific user
+                            attachment_data = await attachment_handler.save_attachment(mock_file, user_id)
+                            
+                            if attachment_data:
+                                recipient_attachments.append(attachment_data)
+                                print(f"✅ Saved attachment for {recipient}: {attachment['filename']} (ID: {attachment_data['id']})")
+                            else:
+                                print(f"❌ Failed to save attachment for {recipient}: {attachment['filename']}")
+                                
+                        except Exception as e:
+                            print(f"❌ Error saving attachment {attachment['filename']} for {recipient}: {e}")
+                
                 email_data = {
                     "subject": subject,
                     "body": body,
@@ -403,14 +508,14 @@ class SMTPReceiveServer:
                     "to_addresses": to_addresses,
                     "cc_addresses": cc_addresses,
                     "bcc_addresses": [],
-                    "attachments": attachments,
+                    "attachments": recipient_attachments,
                     "status": EmailStatus.RECEIVED,
                     "priority": EmailPriority.NORMAL,
                     "received_at": received_date_str
                 }
                 
                 # Store in database
-                print(f"💾 Storing email in database for user_id: {user_id}")
+                print(f"💾 Storing email in database for user_id: {user_id} with {len(recipient_attachments)} attachments")
                 await EmailDatabase.create_email(email_data, user_id)
                 
                 print(f"✅ Email stored successfully for {recipient}: {subject}")
