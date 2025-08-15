@@ -5,6 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 import io
+import asyncio
 
 # Import models from the same directory
 from .models import (
@@ -145,27 +146,53 @@ async def compose_email(
         
         # Send email if not saving as draft
         if not request.save_as_draft:
-            # Prepare attachments with content for SMTP sending
+            # Prepare attachments with content for SMTP sending (PARALLEL PROCESSING)
             smtp_attachments = []
-            for attachment_meta in attachments:
+            
+            async def prepare_attachment(attachment_meta):
+                """Helper function to prepare a single attachment in parallel"""
                 try:
                     attachment_content = await attachment_handler.get_attachment_content(attachment_meta['id'], user_id)
                     if attachment_content:
-                        smtp_attachments.append({
+                        return {
                             'content': attachment_content,
                             'filename': attachment_meta['filename'],
                             'content_type': attachment_meta['content_type']
-                        })
-                        print(f"📎 Prepared attachment for SMTP: {attachment_meta['filename']}")
+                        }
                     else:
                         print(f"❌ Failed to get content for attachment: {attachment_meta['filename']}")
+                        return None
                 except Exception as e:
-                    print(f"❌ Error preparing attachment {attachment_meta['filename']}: {e}")
+                    print(f"❌ Error preparing attachment {attachment_meta.get('filename', 'unknown')}: {e}")
+                    return None
             
-            print(f"📧 Sending email with {len(smtp_attachments)} attachments")
-            if not settings.development_mode:
-                # Production mode - actually send email via SMTP
+            # Process all attachments in parallel for much faster performance
+            if attachments:
+                import time
+                start_time = time.time()
+                
+                # Create tasks for all attachments
+                attachment_tasks = [prepare_attachment(att) for att in attachments]
+                
+                # Wait for all attachments to be processed concurrently
+                attachment_results = await asyncio.gather(*attachment_tasks, return_exceptions=True)
+                
+                # Filter out None results and exceptions
+                smtp_attachments = [
+                    result for result in attachment_results 
+                    if result is not None and not isinstance(result, Exception)
+                ]
+                
+                processing_time = time.time() - start_time
+                print(f"📊 Processed {len(smtp_attachments)}/{len(attachments)} attachments in {processing_time:.2f}s (parallel)")
+            
+            # BACKGROUND EMAIL SENDING - Start email sending in background and return immediately
+            async def send_email_background():
+                """Background task to send email without blocking the API response"""
                 try:
+                    import time
+                    smtp_start_time = time.time()
+                    
                     success = await smtp_handler.send_email(
                         from_email=from_address.email,
                         to_emails=[addr.email for addr in to_addresses],
@@ -177,39 +204,27 @@ async def compose_email(
                         attachments=smtp_attachments
                     )
                     
-                    if not success:
-                        # Update status back to draft if sending failed
-                        await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
-                        raise HTTPException(status_code=500, detail="Failed to send email")
-                except Exception as e:
-                    # Update status back to draft if sending failed
-                    await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
-                    raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
-            else:
-                # Development mode - send via local SMTP server
-                try:
-                    success = await smtp_handler.send_email(
-                        from_email=from_address.email,
-                        to_emails=[addr.email for addr in to_addresses],
-                        subject=request.subject,
-                        body=request.body,
-                        html_body=request.html_body,
-                        cc_emails=[addr.email for addr in cc_addresses],
-                        bcc_emails=[addr.email for addr in bcc_addresses],
-                        attachments=smtp_attachments
-                    )
+                    smtp_time = time.time() - smtp_start_time
+                    print(f"📊 SMTP sending took {smtp_time:.2f}s")
                     
                     if not success:
                         # Update status back to draft if sending failed
                         await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
-                        raise HTTPException(status_code=500, detail="Failed to send email via local SMTP server")
+                        print(f"❌ Background email sending failed - reverted to draft status")
+                    else:
+                        mode = "local SMTP" if settings.development_mode else "external SMTP"
+                        recipients = [addr.email for addr in to_addresses]
+                        print(f"✅ Email sent successfully via {mode} to {recipients}")
                         
-                    print(f"Development mode: Email sent via local SMTP server to {[addr.email for addr in to_addresses]}")
                 except Exception as e:
                     # Update status back to draft if sending failed
                     await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
-                    print(f"Development mode: Failed to send email via local SMTP server: {e}")
-                    raise HTTPException(status_code=500, detail=f"Failed to send email via local SMTP server: {str(e)}")
+                    print(f"❌ Background email sending error: {e} - reverted to draft status")
+            
+            # Start background task and return immediately (MASSIVE PERFORMANCE IMPROVEMENT)
+            print(f"🚀 Starting background email sending task with {len(smtp_attachments)} attachments")
+            asyncio.create_task(send_email_background())
+            print(f"⚡ API response returned immediately - email sending in background")
         
         return email
         

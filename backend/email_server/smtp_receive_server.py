@@ -49,7 +49,7 @@ class SMTPReceiveServer:
                     break
                     
                 line_str = line.decode('utf-8', errors='ignore').strip()
-                print(f"🔍 Received line: '{line_str}'")
+                # print(f"🔍 Received line: '{line_str}'")
                 if not line_str:
                     print("❌ Empty line received")
                     continue
@@ -57,26 +57,21 @@ class SMTPReceiveServer:
                 # Update last activity
                 self.connections[client_id].last_activity = datetime.utcnow()
                 
-                # Parse command
-                print(f"🔍 Parsing command: {line_str}")
+                # Parse command (minimal logging for performance)
                 command = self._parse_command(line_str)
                 if not command:
-                    print("❌ Invalid command")
-                    # Check if we're getting Base64 data - this suggests protocol breakdown
+                    # Check if we're getting Base64 data - disconnect silently to reduce noise
                     if len(line_str) > 50 and line_str.replace('+', '').replace('/', '').replace('=', '').isalnum():
-                        print("❌ Detected Base64 data as command - SMTP protocol has broken down")
-                        print("❌ This suggests the client is sending email content without proper DATA handling")
-                        # Disconnect the client to prevent further protocol errors
+                        print("❌ Base64 data detected - disconnecting client")
                         break
                     await self._send_response(writer, 500, "Invalid command")
                     continue
                 
-                print(f"✅ Command parsed: {command.command}")
-                
-                # Process command
-                print(f"🔍 Processing command: {command.command}")
+                # Process command (minimal logging)
                 response = await self._process_command(client_id, command, current_envelope)
-                print(f"✅ Command processed, response: {response.code} {response.message}")
+                # Only log errors and important commands
+                if response.code >= 400 or command.command in ['DATA', 'QUIT']:
+                    print(f"📧 {command.command}: {response.code} {response.message}")
                 
                 # Update envelope if needed
                 if command.command == "MAIL" and response.code == 250:
@@ -170,13 +165,8 @@ class SMTPReceiveServer:
     def _parse_command(self, line: str) -> Optional[SMTPCommand]:
         """Parse SMTP command line"""
         try:
-            print(f"🔍 Parsing command line: '{line}'")
-            
-            # Check if this looks like Base64 data (common pattern in attachment errors)
+            # Check if this looks like Base64 data (skip verbose logging)
             if len(line) > 50 and line.replace('+', '').replace('/', '').replace('=', '').isalnum():
-                print(f"❌ Received what appears to be Base64 data as command: {line[:50]}...")
-                print("❌ This suggests the email data wasn't fully consumed during DATA phase")
-                print("❌ Ignoring this line and continuing to wait for proper SMTP commands")
                 return None
             
             # Check if line contains mostly non-ASCII or garbled data
@@ -198,7 +188,6 @@ class SMTPReceiveServer:
                 print(f"❌ Unknown SMTP command: {command}")
                 # Still return it so we can send proper error response
             
-            print(f"✅ Parsed command: {command}, arguments: {arguments}")
             return SMTPCommand(command=command, arguments=arguments)
         except Exception as e:
             print(f"❌ Error parsing command: {e}")
@@ -286,19 +275,18 @@ class SMTPReceiveServer:
             import asyncio
             print("🔍 Starting to read email data...")
             while True:
-                # Read line with timeout (reduce logging noise)
-                if line_count % 200 == 0:  # Log every 200 lines instead of every line
-                    print(f"🔍 Reading line {line_count + 1}...")
+                # Read line with timeout (minimal logging for performance)
                 line = await asyncio.wait_for(reader.readline(), timeout=10.0)
                 line_count += 1
                 
                 if not line:
-                    print(f"🔍 No more data after {line_count} lines")
+                    if line_count > 100:  # Only log for substantial emails
+                        print(f"🔍 Finished reading email data: {line_count} lines")
                     break
                 
-                # Only log first few lines and every 200th line to reduce noise
-                if line_count <= 5 or line_count % 200 == 0:
-                    print(f"🔍 Received line {line_count}: {line[:100]}...")
+                # Only log progress for very large emails (reduce I/O overhead)
+                # if line_count > 0 and line_count % 1000 == 0:
+                #     print(f"🔍 Reading large email: {line_count} lines processed...")
                 
                 # Check for end marker (SMTP DATA termination: single dot on its own line)
                 if line.strip() == b".":

@@ -57,7 +57,9 @@ class SMTPHandler:
 
             # Add attachments
             if attachments:
-                print(f"📎 Adding {len(attachments)} attachments to email")
+                total_attachment_size = sum(len(att.get('content', b'')) for att in attachments)
+                print(f"📎 Adding {len(attachments)} attachments ({total_attachment_size // 1024}KB total)")
+                
                 for attachment in attachments:
                     try:
                         # Determine content type and disposition
@@ -74,10 +76,9 @@ class SMTPHandler:
                         )
                         
                         msg.attach(part)
-                        print(f"📎 Attached: {attachment['filename']} ({len(attachment['content'])} bytes, {content_type})")
                         
                     except Exception as e:
-                        print(f"❌ Error attaching file {attachment.get('filename', 'unknown')}: {e}")
+                        print(f"❌ Error attaching {attachment.get('filename', 'unknown')}: {e}")
                         continue
 
             # In development mode, use local SMTP server if available
@@ -92,14 +93,9 @@ class SMTPHandler:
                     # Send email without authentication in development
                     all_recipients = to_emails + (cc_emails or []) + (bcc_emails or [])
                     
-                    # Debug: Print email being sent
+                    # Minimal debug info for performance
                     email_content = msg.as_string()
-                    print(f"🔍 Sending email content (first 500 chars): {email_content[:500]}")
-                    print(f"🔍 Email content structure:")
-                    lines = email_content.split('\n')
-                    for i, line in enumerate(lines[:20]):  # First 20 lines
-                        print(f"🔍 Line {i+1}: {repr(line)}")
-                    print(f"🔍 Total lines in email: {len(lines)}")
+                    print(f"📧 Sending email to {len(all_recipients)} recipients ({len(email_content)} bytes)")
                     
                     # Send the email data
                     result = server.sendmail(from_email, all_recipients, email_content)
