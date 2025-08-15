@@ -36,7 +36,7 @@ def get_user_by_email(email: str) -> Optional[Dict]:
         print(f"Error getting user by email {email}: {e}")
         return None
 
-def enrich_email_with_user_data(email_data: Dict) -> Dict:
+async def enrich_email_with_user_data(email_data: Dict) -> Dict:
     """Enrich email data with proper user information"""
     try:
         # Check if from_address contains a user_id instead of email
@@ -137,6 +137,37 @@ def enrich_email_with_user_data(email_data: Dict) -> Dict:
                     else:
                         enriched_addresses.append(addr)
                 email_data[address_field] = enriched_addresses
+        
+        # Enrich attachment data with metadata from attachment handler
+        if "attachments" in email_data and isinstance(email_data["attachments"], list):
+            enriched_attachments = []
+            user_id = email_data.get("user_id")
+            
+            if user_id:
+                # Import attachment handler here to avoid circular imports
+                from email_service.attachment_handler import attachment_handler
+                
+                for attachment in email_data["attachments"]:
+                    if isinstance(attachment, dict) and "id" in attachment:
+                        # Try to get full attachment metadata
+                        try:
+                            attachment_meta = await attachment_handler.get_attachment(attachment["id"], user_id)
+                            if attachment_meta:
+                                # Merge the metadata with the existing attachment data
+                                enriched_attachment = {**attachment, **attachment_meta}
+                                enriched_attachments.append(enriched_attachment)
+                            else:
+                                # Keep original if metadata not found
+                                enriched_attachments.append(attachment)
+                        except Exception as e:
+                            print(f"Error fetching attachment metadata for {attachment.get('id')}: {e}")
+                            # Keep original if error occurs
+                            enriched_attachments.append(attachment)
+                    else:
+                        # Keep original if no ID or not a dict
+                        enriched_attachments.append(attachment)
+                
+                email_data["attachments"] = enriched_attachments
         
         return email_data
     except Exception as e:
@@ -360,7 +391,7 @@ class EmailDatabase:
                 emails = []
                 for email_id in email_ids:
                     if email_id in email_map:
-                        enriched_record = enrich_email_with_user_data(email_map[email_id])
+                        enriched_record = await enrich_email_with_user_data(email_map[email_id])
                         emails.append(EmailMessage(**enriched_record))
                 
                 return emails
@@ -409,7 +440,7 @@ class EmailDatabase:
         emails = []
         for record in result.data:
             # Enrich email data with proper user information
-            enriched_record = enrich_email_with_user_data(record)
+            enriched_record = await enrich_email_with_user_data(record)
             emails.append(EmailMessage(**enriched_record))
         
         return emails
@@ -421,7 +452,7 @@ class EmailDatabase:
         
         if result.data:
             # Enrich email data with proper user information
-            enriched_record = enrich_email_with_user_data(result.data[0])
+            enriched_record = await enrich_email_with_user_data(result.data[0])
             return EmailMessage(**enriched_record)
         return None
 

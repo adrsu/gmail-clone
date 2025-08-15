@@ -19,13 +19,17 @@ export interface UploadResponse {
 }
 
 class AttachmentService {
-  private baseUrl = config.EMAIL_SERVICE_URL;
+  private _baseUrl = config.EMAIL_SERVICE_URL;
+  
+  get baseUrl() {
+    return this._baseUrl;
+  }
 
   async uploadAttachment(file: File, userId: string): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${this.baseUrl}/attachments/upload?user_id=${userId}`, {
+    const response = await fetch(`${this._baseUrl}/attachments/upload?user_id=${userId}`, {
       method: 'POST',
       body: formData,
     });
@@ -44,7 +48,7 @@ class AttachmentService {
       formData.append('files', file);
     });
 
-    const response = await fetch(`${this.baseUrl}/attachments/upload-multiple?user_id=${userId}`, {
+    const response = await fetch(`${this._baseUrl}/attachments/upload-multiple?user_id=${userId}`, {
       method: 'POST',
       body: formData,
     });
@@ -58,7 +62,7 @@ class AttachmentService {
   }
 
   async getAttachment(attachmentId: string, userId: string): Promise<Attachment> {
-    const response = await fetch(`${this.baseUrl}/attachments/${attachmentId}?user_id=${userId}`);
+    const response = await fetch(`${this._baseUrl}/attachments/${attachmentId}?user_id=${userId}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -69,7 +73,7 @@ class AttachmentService {
   }
 
   async downloadAttachment(attachmentId: string, userId: string, filename: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/attachments/${attachmentId}/download?user_id=${userId}`);
+    const response = await fetch(`${this._baseUrl}/attachments/${attachmentId}/download?user_id=${userId}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -88,7 +92,7 @@ class AttachmentService {
   }
 
   async deleteAttachment(attachmentId: string, userId: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/attachments/${attachmentId}?user_id=${userId}`, {
+    const response = await fetch(`${this._baseUrl}/attachments/${attachmentId}?user_id=${userId}`, {
       method: 'DELETE',
     });
 

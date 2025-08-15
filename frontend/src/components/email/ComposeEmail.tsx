@@ -51,9 +51,11 @@ interface ComposeEmailProps {
   onSaveDraft: (emailData: EmailData) => void;
   onDeleteDraft?: (draftId: string) => Promise<void>;
   initialData?: Partial<EmailData>;
+  userId: string;
 }
 
 import { attachmentService, Attachment, UploadResponse } from '../../services/attachmentService';
+import AttachmentList from './AttachmentList';
 
 interface EmailData {
   id?: string;
@@ -74,6 +76,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
   onSaveDraft,
   onDeleteDraft,
   initialData,
+  userId,
 }) => {
   const [emailData, setEmailData] = useState<EmailData>({
     subject: initialData?.subject || '',
@@ -170,10 +173,10 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
         }
       }
 
-      // Upload files to server
-      const uploadPromises = files.map(file => 
-        attachmentService.uploadAttachment(file, 'current-user-id') // TODO: Get actual user ID
-      );
+             // Upload files to server
+       const uploadPromises = files.map(file => 
+         attachmentService.uploadAttachment(file, userId)
+       );
       
       const uploadResults = await Promise.all(uploadPromises);
       
@@ -200,18 +203,18 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
     }));
   };
 
-  const handleRemoveUploadedAttachment = async (attachmentId: string) => {
-    try {
-      await attachmentService.deleteAttachment(attachmentId, 'current-user-id'); // TODO: Get actual user ID
-      setEmailData(prev => ({
-        ...prev,
-        uploadedAttachments: prev.uploadedAttachments.filter(att => att.id !== attachmentId)
-      }));
-    } catch (error) {
-      console.error('Error removing attachment:', error);
-      setUploadError('Failed to remove attachment');
-    }
-  };
+     const handleRemoveUploadedAttachment = async (attachmentId: string) => {
+     try {
+       await attachmentService.deleteAttachment(attachmentId, userId);
+       setEmailData(prev => ({
+         ...prev,
+         uploadedAttachments: prev.uploadedAttachments.filter(att => att.id !== attachmentId)
+       }));
+     } catch (error) {
+       console.error('Error removing attachment:', error);
+       setUploadError('Failed to remove attachment');
+     }
+   };
 
   const isValidEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -261,6 +264,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                       emailData.to_addresses.length > 0 || 
                       emailData.cc_addresses.length > 0 || 
                       emailData.bcc_addresses.length > 0 ||
+                      emailData.uploadedAttachments.length > 0 ||
                       currentTo.trim() || 
                       currentCc.trim() || 
                       currentBcc.trim();
@@ -696,62 +700,14 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
           {/* Uploaded Attachments */}
           {emailData.uploadedAttachments.length > 0 && (
             <Box sx={{ px: 2, pb: 1 }}>
-              <Typography variant="body2" sx={{ color: '#666', mb: 0.5, fontSize: '12px' }}>
-                Attachments ({emailData.uploadedAttachments.length}):
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                {emailData.uploadedAttachments.map((attachment) => (
-                  <Box
-                    key={attachment.id}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      p: 0.5,
-                      border: '1px solid #e8eaed',
-                      borderRadius: 1,
-                      fontSize: '12px',
-                      backgroundColor: '#f8f9fa',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontSize: '16px' }}>
-                        {attachmentService.getFileIcon(attachment.filename)}
-                      </Typography>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {attachment.filename}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontSize: '11px',
-                            color: '#666',
-                          }}
-                        >
-                          {attachmentService.formatFileSize(attachment.size)}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleRemoveUploadedAttachment(attachment.id)}
-                      sx={{ p: 0.5 }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                ))}
-              </Box>
+                             <AttachmentList
+                 attachments={emailData.uploadedAttachments}
+                 userId={userId}
+                 onDelete={handleRemoveUploadedAttachment}
+                 showActions={true}
+                 compact={true}
+                 showPreviews={false}
+               />
             </Box>
           )}
         </Box>

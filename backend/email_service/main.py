@@ -66,7 +66,7 @@ async def test_user_lookup(user_id: str):
     }
     print(f"🔍 TEST: Sample email before enrichment: {sample_email}")
     
-    enriched = enrich_email_with_user_data(sample_email)
+    enriched = await enrich_email_with_user_data(sample_email)
     print(f"🔍 TEST: Sample email after enrichment: {enriched}")
     
     return {
@@ -83,14 +83,40 @@ async def compose_email(
 ):
     """Compose and optionally send an email"""
     try:
-        # Parse email addresses
-        to_addresses = [EmailAddress(email=email) for email in request.to_addresses]
-        cc_addresses = [EmailAddress(email=email) for email in request.cc_addresses]
-        bcc_addresses = [EmailAddress(email=email) for email in request.bcc_addresses]
+        # Parse email addresses and enrich with user data
+        from .database import get_user_by_email
+        
+        def enrich_email_address(email: str) -> EmailAddress:
+            """Enrich email address with user data if available"""
+            user_data = get_user_by_email(email)
+            if user_data:
+                first_name = user_data.get("first_name", "")
+                last_name = user_data.get("last_name", "")
+                full_name = f"{first_name} {last_name}".strip()
+                if not full_name:
+                    full_name = user_data.get("email", email)
+                return EmailAddress(email=email, name=full_name)
+            else:
+                return EmailAddress(email=email)
+        
+        to_addresses = [enrich_email_address(email) for email in request.to_addresses]
+        cc_addresses = [enrich_email_address(email) for email in request.cc_addresses]
+        bcc_addresses = [enrich_email_address(email) for email in request.bcc_addresses]
         
         # Get user info for from_address
-        # In a real app, you'd get this from the user service
-        from_address = EmailAddress(email=f"{user_id}@example.com", name=user_id)
+        from .database import get_user_by_id
+        user_data = get_user_by_id(user_id)
+        if user_data:
+            # Use actual user data
+            first_name = user_data.get("first_name", "")
+            last_name = user_data.get("last_name", "")
+            full_name = f"{first_name} {last_name}".strip()
+            if not full_name:
+                full_name = user_data.get("email", user_id)
+            from_address = EmailAddress(email=user_data.get("email", f"{user_id}@example.com"), name=full_name)
+        else:
+            # Fallback if user not found
+            from_address = EmailAddress(email=f"{user_id}@example.com", name=user_id)
         
         # Get attachment metadata for the provided attachment IDs
         attachments = []
@@ -286,13 +312,39 @@ async def update_email(
         if not existing_email:
             raise HTTPException(status_code=404, detail="Email not found")
         
-        # Parse email addresses
-        to_addresses = [EmailAddress(email=email) for email in request.to_addresses]
-        cc_addresses = [EmailAddress(email=email) for email in request.cc_addresses]
-        bcc_addresses = [EmailAddress(email=email) for email in request.bcc_addresses]
+        # Parse email addresses and enrich with user data
+        from .database import get_user_by_email, get_user_by_id
+        
+        def enrich_email_address(email: str) -> EmailAddress:
+            """Enrich email address with user data if available"""
+            user_data = get_user_by_email(email)
+            if user_data:
+                first_name = user_data.get("first_name", "")
+                last_name = user_data.get("last_name", "")
+                full_name = f"{first_name} {last_name}".strip()
+                if not full_name:
+                    full_name = user_data.get("email", email)
+                return EmailAddress(email=email, name=full_name)
+            else:
+                return EmailAddress(email=email)
+        
+        to_addresses = [enrich_email_address(email) for email in request.to_addresses]
+        cc_addresses = [enrich_email_address(email) for email in request.cc_addresses]
+        bcc_addresses = [enrich_email_address(email) for email in request.bcc_addresses]
         
         # Get user info for from_address
-        from_address = EmailAddress(email=f"{user_id}@example.com", name=user_id)
+        user_data = get_user_by_id(user_id)
+        if user_data:
+            # Use actual user data
+            first_name = user_data.get("first_name", "")
+            last_name = user_data.get("last_name", "")
+            full_name = f"{first_name} {last_name}".strip()
+            if not full_name:
+                full_name = user_data.get("email", user_id)
+            from_address = EmailAddress(email=user_data.get("email", f"{user_id}@example.com"), name=full_name)
+        else:
+            # Fallback if user not found
+            from_address = EmailAddress(email=f"{user_id}@example.com", name=user_id)
         
         email_data = {
             "subject": request.subject,

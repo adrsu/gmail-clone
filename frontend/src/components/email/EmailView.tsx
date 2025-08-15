@@ -38,6 +38,7 @@ interface EmailViewProps {
   totalEmails?: number;
   onPrevious?: () => void;
   onNext?: () => void;
+  userId: string;
 }
 
 const EmailView: React.FC<EmailViewProps> = ({
@@ -52,6 +53,7 @@ const EmailView: React.FC<EmailViewProps> = ({
   totalEmails,
   onPrevious,
   onNext,
+  userId,
 }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -295,17 +297,34 @@ const EmailView: React.FC<EmailViewProps> = ({
                  {/* Attachments */}
          {email.attachments && email.attachments.length > 0 && (
            <Box sx={{ mb: 4 }}>
-             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#202124' }}>
+             {/* <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#202124' }}>
                Attachments ({email.attachments.length})
-             </Typography>
+             </Typography> */}
              <AttachmentList
                attachments={email.attachments}
-               userId="current-user-id" // TODO: Get actual user ID
+               userId={userId}
                showActions={true}
                compact={false}
+               showPreviews={true}
              />
            </Box>
          )}
+         
+         {/* Debug info - remove this after fixing */}
+         {/* <Box sx={{ mb: 4, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+           <Typography variant="body2" sx={{ color: '#666', fontSize: '12px' }}>
+             Debug Info:
+           </Typography>
+           <Typography variant="body2" sx={{ color: '#666', fontSize: '11px', fontFamily: 'monospace' }}>
+             Email ID: {email.id}
+           </Typography>
+           <Typography variant="body2" sx={{ color: '#666', fontSize: '11px', fontFamily: 'monospace' }}>
+             Attachments: {JSON.stringify(email.attachments, null, 2)}
+           </Typography>
+           <Typography variant="body2" sx={{ color: '#666', fontSize: '11px', fontFamily: 'monospace' }}>
+             User ID: {userId}
+           </Typography>
+         </Box> */}
       </Box>
 
       {/* Bottom Action Buttons */}

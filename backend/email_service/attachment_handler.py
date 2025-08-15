@@ -21,12 +21,12 @@ class AttachmentHandler:
         
         # Initialize S3 client if configured
         self.s3_client = None
-        if hasattr(settings, 'aws_access_key_id') and settings.aws_access_key_id:
+        if hasattr(settings, 'AWS_ACCESS_KEY_ID') and settings.AWS_ACCESS_KEY_ID:
             self.s3_client = boto3.client(
                 's3',
-                aws_access_key_id=settings.aws_access_key_id,
-                aws_secret_access_key=settings.aws_secret_access_key,
-                region_name=settings.aws_region
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_REGION
             )
     
     async def save_attachment(self, file: UploadFile, user_id: str) -> Dict[str, Any]:
@@ -50,12 +50,12 @@ class AttachmentHandler:
                 raise HTTPException(status_code=413, detail=f"File too large. Maximum size is {max_size // (1024*1024)}MB")
             
             # Save to local storage or S3
-            if self.s3_client and hasattr(settings, 's3_bucket_name'):
+            if self.s3_client and hasattr(settings, 'S3_BUCKET') and settings.S3_BUCKET:
                 # Save to S3
                 s3_key = f"attachments/{user_id}/{safe_filename}"
                 try:
                     self.s3_client.put_object(
-                        Bucket=settings.s3_bucket_name,
+                        Bucket=settings.S3_BUCKET,
                         Key=s3_key,
                         Body=content,
                         ContentType=content_type,
@@ -65,7 +65,25 @@ class AttachmentHandler:
                             'uploaded_at': datetime.utcnow().isoformat()
                         }
                     )
-                    file_url = f"https://{settings.s3_bucket_name}.s3.amazonaws.com/{s3_key}"
+                    # Generate presigned URL for secure access (expires in 1 hour)
+                    try:
+                        file_url = self.s3_client.generate_presigned_url(
+                            'get_object',
+                            Params={
+                                'Bucket': settings.S3_BUCKET, 
+                                'Key': s3_key,
+                                'ResponseContentType': content_type,  # Ensure proper MIME type
+                                'ResponseContentDisposition': f'inline; filename="{file.filename or "attachment"}"'  # Force inline display for images
+                            },
+                            ExpiresIn=300  # 5 minutes
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to generate presigned URL: {e}")
+                        # Fallback to direct URL (but this may not work due to permissions)
+                        if settings.AWS_REGION == 'us-east-1':
+                            file_url = f"https://{settings.S3_BUCKET}.s3.amazonaws.com/{s3_key}"
+                        else:
+                            file_url = f"https://{settings.S3_BUCKET}.s3.{settings.AWS_REGION}.amazonaws.com/{s3_key}"
                 except ClientError as e:
                     logger.error(f"Failed to upload to S3: {e}")
                     raise HTTPException(status_code=500, detail="Failed to upload file to cloud storage")
@@ -108,20 +126,51 @@ class AttachmentHandler:
         # This would typically query a database
         # For now, we'll implement a simple file-based lookup
         try:
-            if self.s3_client and hasattr(settings, 's3_bucket_name'):
-                # Look up in S3
+            if self.s3_client and hasattr(settings, 'S3_BUCKET') and settings.S3_BUCKET:
+                # Look up in S3 - we need to list objects to find the one with the attachment_id
                 try:
-                    response = self.s3_client.head_object(
-                        Bucket=settings.s3_bucket_name,
-                        Key=f"attachments/{user_id}/{attachment_id}"
+                    # List objects in the user's attachment folder to find the one with the attachment_id
+                    response = self.s3_client.list_objects_v2(
+                        Bucket=settings.S3_BUCKET,
+                        Prefix=f"attachments/{user_id}/{attachment_id}"
                     )
-                    return {
-                        "id": attachment_id,
-                        "filename": response.get('Metadata', {}).get('original_filename', 'unknown'),
-                        "content_type": response.get('ContentType', 'application/octet-stream'),
-                        "size": response.get('ContentLength', 0),
-                        "url": f"https://{settings.s3_bucket_name}.s3.amazonaws.com/attachments/{user_id}/{attachment_id}"
-                    }
+                    
+                    if 'Contents' in response and len(response['Contents']) > 0:
+                        # Found the object, get its metadata
+                        s3_key = response['Contents'][0]['Key']
+                        head_response = self.s3_client.head_object(
+                            Bucket=settings.S3_BUCKET,
+                            Key=s3_key
+                        )
+                        
+                        # Generate presigned URL for secure access
+                        try:
+                            content_type = head_response.get('ContentType', 'application/octet-stream')
+                            original_filename = head_response.get('Metadata', {}).get('original_filename', 'attachment')
+                            
+                            presigned_url = self.s3_client.generate_presigned_url(
+                                'get_object',
+                                Params={
+                                    'Bucket': settings.S3_BUCKET, 
+                                    'Key': s3_key,
+                                    'ResponseContentType': content_type,  # Ensure proper MIME type
+                                    'ResponseContentDisposition': f'inline; filename="{original_filename}"'  # Force inline display
+                                },
+                                ExpiresIn=3600  # 1 hour
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to generate presigned URL: {e}")
+                            # Fallback to direct URL
+                            presigned_url = f"https://{settings.S3_BUCKET}.s3.{settings.AWS_REGION}.amazonaws.com/{s3_key}" if settings.AWS_REGION != 'us-east-1' else f"https://{settings.S3_BUCKET}.s3.amazonaws.com/{s3_key}"
+                        
+                        return {
+                            "id": attachment_id,
+                            "filename": head_response.get('Metadata', {}).get('original_filename', 'unknown'),
+                            "content_type": head_response.get('ContentType', 'application/octet-stream'),
+                            "size": head_response.get('ContentLength', 0),
+                            "url": presigned_url
+                        }
+                    return None
                 except ClientError:
                     return None
             else:
@@ -144,14 +193,24 @@ class AttachmentHandler:
     async def delete_attachment(self, attachment_id: str, user_id: str) -> bool:
         """Delete an attachment"""
         try:
-            if self.s3_client and hasattr(settings, 's3_bucket_name'):
-                # Delete from S3
+            if self.s3_client and hasattr(settings, 'S3_BUCKET') and settings.S3_BUCKET:
+                # Delete from S3 - we need to list objects to find the one with the attachment_id
                 try:
-                    self.s3_client.delete_object(
-                        Bucket=settings.s3_bucket_name,
-                        Key=f"attachments/{user_id}/{attachment_id}"
+                    # List objects in the user's attachment folder to find the one with the attachment_id
+                    response = self.s3_client.list_objects_v2(
+                        Bucket=settings.S3_BUCKET,
+                        Prefix=f"attachments/{user_id}/{attachment_id}"
                     )
-                    return True
+                    
+                    if 'Contents' in response and len(response['Contents']) > 0:
+                        # Found the object, delete it
+                        s3_key = response['Contents'][0]['Key']
+                        self.s3_client.delete_object(
+                            Bucket=settings.S3_BUCKET,
+                            Key=s3_key
+                        )
+                        return True
+                    return False
                 except ClientError:
                     return False
             else:
@@ -169,14 +228,24 @@ class AttachmentHandler:
     async def get_attachment_content(self, attachment_id: str, user_id: str) -> Optional[bytes]:
         """Get the actual file content of an attachment"""
         try:
-            if self.s3_client and hasattr(settings, 's3_bucket_name'):
-                # Get from S3
+            if self.s3_client and hasattr(settings, 'S3_BUCKET') and settings.S3_BUCKET:
+                # Get from S3 - we need to list objects to find the one with the attachment_id
                 try:
-                    response = self.s3_client.get_object(
-                        Bucket=settings.s3_bucket_name,
-                        Key=f"attachments/{user_id}/{attachment_id}"
+                    # List objects in the user's attachment folder to find the one with the attachment_id
+                    response = self.s3_client.list_objects_v2(
+                        Bucket=settings.S3_BUCKET,
+                        Prefix=f"attachments/{user_id}/{attachment_id}"
                     )
-                    return response['Body'].read()
+                    
+                    if 'Contents' in response and len(response['Contents']) > 0:
+                        # Found the object, get its content
+                        s3_key = response['Contents'][0]['Key']
+                        get_response = self.s3_client.get_object(
+                            Bucket=settings.S3_BUCKET,
+                            Key=s3_key
+                        )
+                        return get_response['Body'].read()
+                    return None
                 except ClientError:
                     return None
             else:

@@ -316,9 +316,10 @@ class SMTPReceiveServer:
                 print(f"Error parsing Cc addresses '{cc_header}': {e}")
                 cc_addresses = []
             
-            # Get email body
+            # Get email body and attachments
             body = ""
             html_body = None
+            attachments = []
             
             if email_message.is_multipart():
                 for part in email_message.walk():
@@ -329,7 +330,46 @@ class SMTPReceiveServer:
                             body = part.get_content()
                         elif part.get_content_subtype() == 'html':
                             html_body = part.get_content()
-                        break
+                    elif part.get_content_maintype() in ['image', 'application', 'audio', 'video']:
+                        # This is an attachment
+                        filename = part.get_filename()
+                        if filename:
+                            # Generate a unique ID for the attachment
+                            attachment_id = str(uuid.uuid4())
+                            
+                            # Get content type and size
+                            content_type = part.get_content_type()
+                            content = part.get_payload(decode=True)
+                            size = len(content) if content else 0
+                            
+                            # Save attachment to S3 or local storage
+                            try:
+                                from email_service.attachment_handler import attachment_handler
+                                
+                                # Create a mock UploadFile object
+                                class MockUploadFile:
+                                    def __init__(self, content, filename, content_type):
+                                        self.content = content
+                                        self.filename = filename
+                                        self.content_type = content_type
+                                        self.size = len(content)
+                                    
+                                    async def read(self):
+                                        return self.content
+                                
+                                mock_file = MockUploadFile(content, filename, content_type)
+                                
+                                # Save attachment (this will use the default user ID for now)
+                                attachment_data = await attachment_handler.save_attachment(mock_file, self.default_user_id)
+                                
+                                if attachment_data:
+                                    attachments.append(attachment_data)
+                                    print(f"✅ Saved attachment: {filename} (ID: {attachment_id})")
+                                else:
+                                    print(f"❌ Failed to save attachment: {filename}")
+                                    
+                            except Exception as e:
+                                print(f"❌ Error saving attachment {filename}: {e}")
             else:
                 body = email_message.get_content()
             
@@ -363,6 +403,7 @@ class SMTPReceiveServer:
                     "to_addresses": to_addresses,
                     "cc_addresses": cc_addresses,
                     "bcc_addresses": [],
+                    "attachments": attachments,
                     "status": EmailStatus.RECEIVED,
                     "priority": EmailPriority.NORMAL,
                     "received_at": received_date_str
@@ -401,6 +442,27 @@ class SMTPReceiveServer:
         if not email or '@' not in email:
             email = "unknown@example.com"
             name = "Unknown"
+        
+        # Try to enrich the name with user data from database
+        try:
+            from shared.database import get_supabase
+            supabase = get_supabase()
+            clean_email = self._clean_email_address(email)
+            
+            # Look up user by email
+            response = supabase.table('users').select('first_name,last_name,email').eq('email', clean_email).execute()
+            
+            if response.data:
+                user_data = response.data[0]
+                first_name = user_data.get("first_name", "")
+                last_name = user_data.get("last_name", "")
+                full_name = f"{first_name} {last_name}".strip()
+                if full_name:
+                    name = full_name
+                else:
+                    name = user_data.get("email", name)
+        except Exception as e:
+            print(f"Warning: Could not enrich email address {email}: {e}")
         
         return EmailAddress(email=email, name=name)
     
