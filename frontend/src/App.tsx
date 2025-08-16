@@ -7,6 +7,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import Dashboard from './components/dashboard/Dashboard';
 import Layout from './components/layout/Layout';
+import { LandingPage } from './components/landing';
 
 function App() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -14,6 +15,10 @@ function App() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <Routes>
+        <Route 
+          path="/landing" 
+          element={isAuthenticated ? <Navigate to="/" /> : <LandingPage />} 
+        />
         <Route 
           path="/login" 
           element={isAuthenticated ? <Navigate to="/" /> : <Login />} 
@@ -30,7 +35,7 @@ function App() {
                 <Dashboard />
               </Layout>
             ) : (
-              <Navigate to="/login" />
+              <LandingPage />
             )
           } 
         />

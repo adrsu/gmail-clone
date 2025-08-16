@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import {
@@ -9,7 +9,9 @@ import {
   Typography,
   Container,
   Alert,
+  IconButton,
 } from '@mui/material';
+import { ArrowBack } from '@mui/icons-material';
 import { loginSuccess } from '../../store/slices/authSlice';
 import { config, API_ENDPOINTS } from '../../config/config';
 
@@ -25,6 +27,18 @@ const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Force dark theme styles
+    document.body.style.backgroundColor = '#0f0f23';
+    document.body.style.color = 'white';
+    
+    return () => {
+      // Cleanup on unmount
+      document.body.style.backgroundColor = '';
+      document.body.style.color = '';
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -89,111 +103,232 @@ const Register: React.FC = () => {
     }
   };
 
+  const handleGoBack = () => {
+    navigate('/');
+  };
+
+  const textFieldStyles = {
+    '& .MuiOutlinedInput-root': {
+      color: 'white',
+      '& fieldset': {
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+      },
+      '&:hover fieldset': {
+        borderColor: 'rgba(255, 255, 255, 0.5)',
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: '#64b5f6',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      color: 'rgba(255, 255, 255, 0.7)',
+      '&:hover': {
+        color: 'rgba(255, 255, 255, 0.9)',
+      },
+      '&.Mui-focused': {
+        color: '#64b5f6',
+      },
+    },
+  };
+
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)',
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 4,
+        position: 'relative',
+      }}
+    >
+      {/* Go Back Button */}
+      <IconButton
+        onClick={handleGoBack}
         sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+          position: 'absolute',
+          top: 20,
+          left: 20,
+          color: 'rgba(255, 255, 255, 0.8)',
+          background: 'rgba(0, 0, 0, 0.3)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          '&:hover': {
+            background: 'rgba(0, 0, 0, 0.5)',
+            color: 'white',
+            transform: 'translateX(-2px)',
+          },
+          transition: 'all 0.3s ease',
         }}
       >
-        <Paper
-          elevation={3}
+        <ArrowBack />
+      </IconButton>
+
+      <Container component="main" maxWidth="xs">
+        <Box
           sx={{
-            padding: 4,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             width: '100%',
           }}
         >
-          <Typography component="h1" variant="h5">
-            Create Account
-          </Typography>
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-            {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              autoFocus
-              value={formData.email}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              fullWidth
-              id="first_name"
-              label="First Name"
-              name="first_name"
-              autoComplete="given-name"
-              value={formData.first_name}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              fullWidth
-              id="last_name"
-              label="Last Name"
-              name="last_name"
-              autoComplete="family-name"
-              value={formData.last_name}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="new-password"
-              value={formData.password}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="confirmPassword"
-              label="Confirm Password"
-              type="password"
-              id="confirmPassword"
-              autoComplete="new-password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
+          <Paper
+            elevation={0}
+            sx={{
+              padding: 4,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              width: '100%',
+              background: 'rgba(0, 0, 0, 0.4)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '20px',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            <Typography 
+              component="h1" 
+              variant="h4"
+              sx={{
+                mb: 3,
+                background: 'linear-gradient(45deg, #64b5f6, #42a5f5)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontWeight: 600,
+              }}
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
-            </Button>
-            <Box sx={{ textAlign: 'center' }}>
-              <Link to="/login" style={{ textDecoration: 'none' }}>
-                <Typography variant="body2" color="primary">
-                  Already have an account? Sign In
-                </Typography>
-              </Link>
+              Create Account
+            </Typography>
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
+              {error && (
+                <Alert 
+                  severity="error" 
+                  sx={{ 
+                    mb: 2,
+                    background: 'rgba(244, 67, 54, 0.1)',
+                    border: '1px solid rgba(244, 67, 54, 0.3)',
+                    color: '#ffcdd2',
+                    '& .MuiAlert-icon': {
+                      color: '#ffcdd2',
+                    }
+                  }}
+                >
+                  {error}
+                </Alert>
+              )}
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="email"
+                label="Email Address"
+                name="email"
+                autoComplete="email"
+                autoFocus
+                value={formData.email}
+                onChange={handleChange}
+                sx={textFieldStyles}
+              />
+              <TextField
+                margin="normal"
+                fullWidth
+                id="first_name"
+                label="First Name"
+                name="first_name"
+                autoComplete="given-name"
+                value={formData.first_name}
+                onChange={handleChange}
+                sx={textFieldStyles}
+              />
+              <TextField
+                margin="normal"
+                fullWidth
+                id="last_name"
+                label="Last Name"
+                name="last_name"
+                autoComplete="family-name"
+                value={formData.last_name}
+                onChange={handleChange}
+                sx={textFieldStyles}
+              />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                name="password"
+                label="Password"
+                type="password"
+                id="password"
+                autoComplete="new-password"
+                value={formData.password}
+                onChange={handleChange}
+                sx={textFieldStyles}
+              />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                name="confirmPassword"
+                label="Confirm Password"
+                type="password"
+                id="confirmPassword"
+                autoComplete="new-password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                sx={textFieldStyles}
+              />
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                sx={{ 
+                  mt: 3, 
+                  mb: 2,
+                  background: 'linear-gradient(45deg, #64b5f6, #42a5f5)',
+                  borderRadius: '50px',
+                  py: 1.5,
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  boxShadow: '0 8px 32px rgba(100, 181, 246, 0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #42a5f5, #2196f3)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 12px 40px rgba(100, 181, 246, 0.4)',
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+                disabled={loading}
+              >
+                {loading ? 'Creating Account...' : 'Create Account'}
+              </Button>
+              <Box sx={{ textAlign: 'center' }}>
+                <Link to="/login" style={{ textDecoration: 'none' }}>
+                  <Typography 
+                    variant="body2" 
+                    sx={{
+                      color: '#64b5f6',
+                      '&:hover': {
+                        color: '#42a5f5',
+                        textDecoration: 'underline',
+                      },
+                      transition: 'color 0.3s ease',
+                    }}
+                  >
+                    Already have an account? Sign In
+                  </Typography>
+                </Link>
+              </Box>
             </Box>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+          </Paper>
+        </Box>
+      </Container>
+    </Box>
   );
 };
 
