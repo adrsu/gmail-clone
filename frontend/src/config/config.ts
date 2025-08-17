@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
     REFRESH: '/auth/refresh',
     LOGOUT: '/auth/logout',
     ME: '/me',
+    CHECK_EMAIL_AVAILABILITY: '/check-email-availability',
   },
   USERS: {
     PROFILE: '/users/profile',

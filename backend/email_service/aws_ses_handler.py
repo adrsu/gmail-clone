@@ -294,7 +294,7 @@ class AWSSESHandler:
                 results['errors'].append("SMTP credentials not configured")
                 
         except Exception as e:
-            results['errors'].append(f"SMTP test failed: {e} {smtp_config}")
+            results['errors'].append(f"SMTP test failed: {e}")
         
         return results
     

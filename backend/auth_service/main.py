@@ -48,6 +48,13 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: Optional[str] = None
 
+class EmailAvailabilityRequest(BaseModel):
+    email: str
+
+class EmailAvailabilityResponse(BaseModel):
+    available: bool
+    email: str
+
 # Utility functions
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -120,6 +127,32 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "auth-service"}
 
+@app.post("/check-email-availability", response_model=EmailAvailabilityResponse)
+async def check_email_availability(request: EmailAvailabilityRequest):
+    """Check if an email address is available for registration"""
+    try:
+        # Only allow 27send.com domain emails
+        if not request.email.endswith("@27send.com"):
+            raise HTTPException(
+                status_code=400, 
+                detail="Only 27send.com email addresses are allowed"
+            )
+        
+        existing_user = get_user(request.email)
+        available = existing_user is None
+        
+        return EmailAvailabilityResponse(
+            available=available,
+            email=request.email
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error checking email availability: {str(e)}"
+        )
+
 @app.post("/register", response_model=UserResponse)
 def register(user: UserCreate):
     try:
@@ -128,6 +161,13 @@ def register(user: UserCreate):
         raise HTTPException(
             status_code=500, 
             detail="Database configuration error. Please check your Supabase credentials."
+        )
+    
+    # Only allow 27send.com domain emails
+    if not user.email.endswith("@27send.com"):
+        raise HTTPException(
+            status_code=400, 
+            detail="Only 27send.com email addresses are allowed for registration"
         )
     
     # Check if user already exists
@@ -175,6 +215,14 @@ async def get_user_by_id_endpoint(user_id: str):
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends()
 ):
+    # Only allow 27send.com domain emails for login
+    if not form_data.username.endswith("@27send.com"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Only 27send.com email addresses are allowed for login",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(

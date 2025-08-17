@@ -40,6 +40,13 @@ const Login: React.FC = () => {
     setLoading(true);
     setError('');
 
+    // Validate 27send.com email domain
+    if (!email.endsWith('@27send.com')) {
+      setError('Please enter a valid 27send.com email address');
+      setLoading(false);
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append('username', email);

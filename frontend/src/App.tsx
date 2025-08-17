@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { Box } from '@mui/material';
 import { RootState } from './store';
 import Login from './components/auth/Login';
-import Register from './components/auth/Register';
+import MultiStepRegister from './components/auth/MultiStepRegister';
 import Dashboard from './components/dashboard/Dashboard';
 import Layout from './components/layout/Layout';
 import { LandingPage } from './components/landing';
@@ -25,7 +25,7 @@ function App() {
         />
         <Route 
           path="/register" 
-          element={isAuthenticated ? <Navigate to="/" /> : <Register />} 
+          element={isAuthenticated ? <Navigate to="/" /> : <MultiStepRegister />} 
         />
         <Route 
           path="/" 
