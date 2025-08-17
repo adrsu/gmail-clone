@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Elasticsearch initialization script for Gmail Clone
+Elasticsearch initialization script for 27send
 This script sets up the Elasticsearch index and optionally reindexes existing emails.
 """
 
@@ -80,7 +80,7 @@ async def reindex_existing_emails():
 
 async def main():
     """Main function"""
-    print("🚀 Gmail Clone Elasticsearch Initialization")
+    print("🚀 27send Elasticsearch Initialization")
     print("=" * 50)
     
     # Check if Elasticsearch URL is configured
@@ -106,7 +106,7 @@ async def main():
         print("\nℹ️  To reindex existing emails, run: python init_elasticsearch.py --reindex")
     
     print("\n✅ Elasticsearch initialization complete!")
-    print("🎉 Your Gmail Clone is now ready to use Elasticsearch for search!")
+    print("🎉 Your 27send is now ready to use Elasticsearch for search!")
 
 if __name__ == "__main__":
     asyncio.run(main())

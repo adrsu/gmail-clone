@@ -88,7 +88,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    print("Starting Gmail Clone Email Server...")
+    print("Starting 27send Email Server...")
     print(f"Development Mode: {settings.development_mode}")
     print(f"IMAP Server: {settings.imap_host}:{settings.imap_port}")
     print(f"SMTP Receive Server: {settings.smtp_receive_host}:{settings.smtp_receive_port}")

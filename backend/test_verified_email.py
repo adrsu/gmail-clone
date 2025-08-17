@@ -34,11 +34,11 @@ async def test_verified_email():
         success = await handler.send_email(
             from_email=f"test@{aws_config.verified_domain}",
             to_emails=[test_email],
-            subject="Test Email from Gmail Clone (Sandbox Mode)",
+            subject="Test Email from 27send (Sandbox Mode)",
             body=f"""
 Hello!
 
-This is a test email from your Gmail Clone application running in AWS SES Sandbox mode.
+This is a test email from your 27send application running in AWS SES Sandbox mode.
 
 Details:
 - From: test@{aws_config.verified_domain}
@@ -53,16 +53,16 @@ Note: This email was sent in sandbox mode, which means it can only be sent to ve
 Next steps:
 1. Request production access in AWS SES console
 2. Once approved, you can send to any email address
-3. Your Gmail clone will be fully functional for external emails
+3. Your 27send will be fully functional for external emails
 
 Best regards,
-Your Gmail Clone Application
+Your 27send Application
             """,
             html_body=f"""
 <html>
 <body>
-    <h2>🎉 Test Email from Gmail Clone</h2>
-    <p>This is a test email from your Gmail Clone application running in <strong>AWS SES Sandbox mode</strong>.</p>
+    <h2>🎉 Test Email from 27send</h2>
+    <p>This is a test email from your 27send application running in <strong>AWS SES Sandbox mode</strong>.</p>
     
     <h3>📧 Email Details:</h3>
     <ul>
@@ -82,11 +82,11 @@ Your Gmail Clone Application
     <ol>
         <li>Request production access in AWS SES console</li>
         <li>Once approved, you can send to any email address</li>
-        <li>Your Gmail clone will be fully functional for external emails</li>
+        <li>Your 27send will be fully functional for external emails</li>
     </ol>
     
     <p>Best regards,<br>
-    <strong>Your Gmail Clone Application</strong></p>
+    <strong>Your 27send Application</strong></p>
 </body>
 </html>
             """

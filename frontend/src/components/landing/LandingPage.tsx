@@ -374,7 +374,7 @@ const LandingPage: React.FC = () => {
                   transition: 'all 0.3s ease'
                 }}
               >
-                Start Your Free Trial
+                Upgrade My Inbox
                 <ArrowForward sx={{ ml: 1 }} />
               </Button>
             </Box>

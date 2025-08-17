@@ -376,22 +376,23 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
           zIndex: 1300,
           borderRadius: '8px',
           overflow: 'hidden',
-          border: '1px solid #e8eaed',
-          boxShadow: '0 8px 10px 1px rgba(0,0,0,0.14), 0 3px 14px 2px rgba(0,0,0,0.12), 0 5px 5px -3px rgba(0,0,0,0.2)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
         }}
       >
         {/* Header */}
         <Box
           sx={{
-            backgroundColor: '#f8f9fa',
-            color: '#202124',
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            color: '#ffffff',
             p: 1.5,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             cursor: 'move',
             minHeight: '48px',
-            borderBottom: '1px solid #e8eaed',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
           }}
         >
           <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '14px' }}>
@@ -401,9 +402,9 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
             <IconButton
               size="small"
               sx={{ 
-                color: '#666', 
+                color: 'rgba(255, 255, 255, 0.8)', 
                 p: 0.5,
-                '&:hover': { backgroundColor: '#e8eaed' }
+                '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
               }}
               onClick={() => setIsExpanded(!isExpanded)}
             >
@@ -412,9 +413,9 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
             <IconButton
               size="small"
               sx={{ 
-                color: '#666', 
+                color: 'rgba(255, 255, 255, 0.8)', 
                 p: 0.5,
-                '&:hover': { backgroundColor: '#e8eaed' }
+                '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
               }}
               onClick={handleClose}
             >
@@ -424,7 +425,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
         </Box>
 
         {/* Content */}
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
           {/* Recipients */}
           <Box sx={{ p: 2, pb: 0 }}>
             {!showToField ? (
@@ -434,19 +435,19 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                   display: 'flex', 
                   alignItems: 'center', 
                   minHeight: '32px', 
-                  borderBottom: '1px solid #e8eaed',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                   cursor: 'text',
                 }}
                 onClick={() => setShowToField(true)}
               >
-                <Typography variant="body2" sx={{ color: '#999', fontSize: '13px', flex: 1 }}>
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '13px', flex: 1 }}>
                   Recipients
                 </Typography>
               </Box>
             ) : (
               // Show To field with Cc/Bcc options
-              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid #e8eaed' }}>
-                <Typography variant="body2" sx={{ color: '#666', minWidth: 60, fontSize: '13px' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', minWidth: 60, fontSize: '13px' }}>
                   To:
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, flex: 1, alignItems: 'center' }}>
@@ -459,10 +460,11 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                       sx={{ 
                         height: 24, 
                         fontSize: '12px',
-                        backgroundColor: '#e8eaed',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        color: '#ffffff',
                         '& .MuiChip-deleteIcon': {
                           fontSize: '16px',
-                          color: '#666'
+                          color: 'rgba(255, 255, 255, 0.8)'
                         }
                       }}
                     />
@@ -493,6 +495,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                       '& .MuiInputBase-input': {
                         fontSize: '13px',
                         padding: '4px 0',
+                        color: '#ffffff',
                       },
                     }}
                   />
@@ -502,10 +505,10 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                   <Typography
                     variant="body2"
                     sx={{
-                      color: showCcField ? '#666' : '#999',
+                      color: showCcField ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.6)',
                       cursor: 'pointer',
                       fontSize: '12px',
-                      '&:hover': { color: '#666' },
+                      '&:hover': { color: 'rgba(255, 255, 255, 0.8)' },
                     }}
                     onClick={() => setShowCcField(!showCcField)}
                   >
@@ -514,10 +517,10 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                   <Typography
                     variant="body2"
                     sx={{
-                      color: showBccField ? '#666' : '#999',
+                      color: showBccField ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.6)',
                       cursor: 'pointer',
                       fontSize: '12px',
-                      '&:hover': { color: '#666' },
+                      '&:hover': { color: 'rgba(255, 255, 255, 0.8)' },
                     }}
                     onClick={() => setShowBccField(!showBccField)}
                   >
@@ -529,8 +532,8 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
 
             {/* Cc Field - only show if clicked */}
             {showCcField && (
-              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid #e8eaed' }}>
-                <Typography variant="body2" sx={{ color: '#666', minWidth: 60, fontSize: '13px' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', minWidth: 60, fontSize: '13px' }}>
                   Cc:
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, flex: 1, alignItems: 'center' }}>
@@ -543,10 +546,11 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                       sx={{ 
                         height: 24, 
                         fontSize: '12px',
-                        backgroundColor: '#e8eaed',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        color: '#ffffff',
                         '& .MuiChip-deleteIcon': {
                           fontSize: '16px',
-                          color: '#666'
+                          color: 'rgba(255, 255, 255, 0.8)'
                         }
                       }}
                     />
@@ -578,6 +582,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                       '& .MuiInputBase-input': {
                         fontSize: '13px',
                         padding: '4px 0',
+                        color: '#ffffff',
                       },
                     }}
                   />
@@ -587,8 +592,8 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
 
             {/* Bcc Field - only show if clicked */}
             {showBccField && (
-              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid #e8eaed' }}>
-                <Typography variant="body2" sx={{ color: '#666', minWidth: 60, fontSize: '13px' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', minWidth: 60, fontSize: '13px' }}>
                   Bcc:
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, flex: 1, alignItems: 'center' }}>
@@ -601,10 +606,11 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                       sx={{ 
                         height: 24, 
                         fontSize: '12px',
-                        backgroundColor: '#e8eaed',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        color: '#ffffff',
                         '& .MuiChip-deleteIcon': {
                           fontSize: '16px',
-                          color: '#666'
+                          color: 'rgba(255, 255, 255, 0.8)'
                         }
                       }}
                     />
@@ -636,6 +642,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                       '& .MuiInputBase-input': {
                         fontSize: '13px',
                         padding: '4px 0',
+                        color: '#ffffff',
                       },
                     }}
                   />
@@ -644,7 +651,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
             )}
 
             {/* Subject */}
-            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid #e8eaed' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '32px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <TextField
                 fullWidth
                 size="small"
@@ -661,6 +668,11 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                   '& .MuiInputBase-input': {
                     fontSize: '13px',
                     padding: '4px 0',
+                    color: '#ffffff',
+                    '&::placeholder': {
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      opacity: 1,
+                    },
                   },
                 }}
               />
@@ -690,6 +702,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                   fontSize: '13px',
                   lineHeight: 1.5,
                   height: '100% !important',
+                  color: '#ffffff',
                   // padding: '15px 0px',
                 },
               }}
@@ -708,7 +721,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
           {/* Uploading Attachments */}
           {uploadingAttachments.length > 0 && (
             <Box sx={{ px: 2, pb: 1 }}>
-              <Typography variant="body2" sx={{ color: '#666', mb: 0.5, fontSize: '12px' }}>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 0.5, fontSize: '12px' }}>
                 Uploading...
               </Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -719,10 +732,11 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       p: 0.5,
-                      border: '1px solid #e8eaed',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: 1,
                       fontSize: '12px',
-                      backgroundColor: '#f8f9fa',
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                      color: '#ffffff',
                     }}
                   >
                     <Typography variant="body2" sx={{ fontSize: '12px', flex: 1 }}>
@@ -738,14 +752,14 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
           {/* Uploaded Attachments */}
           {emailData.uploadedAttachments.length > 0 && (
             <Box sx={{ px: 2, pb: 1 }}>
-                             <AttachmentList
-                 attachments={emailData.uploadedAttachments}
-                 userId={userId}
-                 onDelete={handleRemoveUploadedAttachment}
-                 showActions={true}
-                 compact={true}
-                 showPreviews={false}
-               />
+              <AttachmentList
+                attachments={emailData.uploadedAttachments}
+                userId={userId}
+                onDelete={handleRemoveUploadedAttachment}
+                showActions={true}
+                compact={true}
+                showPreviews={false}
+              />
             </Box>
           )}
         </Box>
@@ -753,13 +767,14 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
         {/* Bottom Toolbar */}
         <Box
           sx={{
-            borderTop: '1px solid #e8eaed',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
             p: 1,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            backgroundColor: '#f8f9fa',
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
             minHeight: '48px',
+            backdropFilter: 'blur(10px)',
           }}
         >
           {/* Left side - Send button and formatting tools */}
@@ -771,7 +786,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
               startIcon={<SendIcon />}
               onClick={handleSend}
               sx={{
-                backgroundColor: '#1a73e8',
+                backgroundColor: '#64b5f6',
                 color: 'white',
                 textTransform: 'none',
                 fontSize: '13px',
@@ -779,11 +794,11 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                 py: 0.5,
                 borderRadius: '4px',
                 '&:hover': {
-                  backgroundColor: '#1557b0',
+                  backgroundColor: '#42a5f5',
                 },
                 '&:disabled': {
-                  backgroundColor: '#e8eaed',
-                  color: '#666',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  color: 'rgba(255, 255, 255, 0.6)',
                 },
               }}
             >
@@ -793,12 +808,12 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
             {/* Formatting toolbar */}
             <Box sx={{ display: 'flex', gap: 0.5 }}>
               <Tooltip title="Formatting options">
-                <IconButton size="small" sx={{ p: 0.5, color: '#666', '&:hover': { backgroundColor: '#e8eaed' } }}>
+                <IconButton size="small" sx={{ p: 0.5, color: 'rgba(255, 255, 255, 0.8)', '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' } }}>
                   <FormatBoldIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Attach files">
-                <IconButton size="small" sx={{ p: 0.5, color: '#666', '&:hover': { backgroundColor: '#e8eaed' } }}>
+                <IconButton size="small" sx={{ p: 0.5, color: 'rgba(255, 255, 255, 0.8)', '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' } }}>
                   <input
                     type="file"
                     multiple
@@ -812,7 +827,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
                 </IconButton>
               </Tooltip>
               <Tooltip title="Insert photo">
-                <IconButton size="small" sx={{ p: 0.5, color: '#666', '&:hover': { backgroundColor: '#e8eaed' } }}>
+                <IconButton size="small" sx={{ p: 0.5, color: 'rgba(255, 255, 255, 0.8)', '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' } }}>
                   <ImageIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
@@ -821,7 +836,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
 
           {/* Right side - Discard button */}
           <Tooltip title="Discard draft">
-            <IconButton size="small" onClick={handleDiscard} sx={{ p: 0.5, color: '#666', '&:hover': { backgroundColor: '#e8eaed' } }}>
+            <IconButton size="small" onClick={handleDiscard} sx={{ p: 0.5, color: 'rgba(255, 255, 255, 0.8)', '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' } }}>
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Tooltip>

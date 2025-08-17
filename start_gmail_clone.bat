@@ -1,5 +1,5 @@
 @echo off
-echo 🎉 Starting Gmail Clone Application...
+echo 🎉 Starting 27send Application...
 echo.
 
 REM Activate virtual environment

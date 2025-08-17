@@ -1,6 +1,6 @@
 # Email Server - SMTP/IMAP Implementation
 
-This module implements a complete SMTP/IMAP server for the Gmail clone application, allowing it to send and receive emails using standard email protocols.
+This module implements a complete SMTP/IMAP server for the 27send application, allowing it to send and receive emails using standard email protocols.
 
 ## Features
 

@@ -91,11 +91,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <AppBar 
             position="static" 
             sx={{ 
-              backgroundColor: '#fff', 
-              color: '#5f6368',
-              boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)',
               height: 64,
-              borderBottom: '1px solid #e8eaed'
             }}
           >
             <Toolbar sx={{ minHeight: '64px !important', px: 2, gap: 1 }}>
@@ -107,9 +103,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 onClick={handleSidebarToggle}
                 sx={{ 
                   mr: 1,
-                  color: '#5f6368',
                   '&:hover': {
-                    backgroundColor: '#f1f3f4',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   }
                 }}
               >
@@ -121,14 +116,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Typography 
                   variant="h6" 
                   sx={{ 
-                    color: '#5f6368', 
                     fontWeight: 400,
                     fontSize: '22px',
                     letterSpacing: '0.25px',
-                    fontFamily: '"Google Sans", "Roboto", "Arial", sans-serif'
+                    fontFamily: '"Google Sans", "Roboto", "Arial", sans-serif',
+                    background: 'linear-gradient(45deg, #64b5f6, #42a5f5)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
                   }}
                 >
-                  Gmail Clone
+                  27send
                 </Typography>
               </Box>
 
@@ -148,15 +146,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      backgroundColor: '#f1f3f4',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
                       borderRadius: '24px', // Changed to circular sides
                       height: 48,
                       '&:hover': {
-                        backgroundColor: '#e8eaed',
+                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
                       },
                       '&.Mui-focused': {
-                        backgroundColor: '#fff',
-                        boxShadow: '0 1px 1px 0 rgba(65,69,73,0.3), 0 1px 3px 1px rgba(65,69,73,0.15)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        boxShadow: '0 1px 1px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15)',
                       },
                     },
                     '& .MuiOutlinedInput-notchedOutline': {
@@ -164,9 +162,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     },
                     '& .MuiInputBase-input': {
                       fontSize: '16px',
-                      color: '#202124',
                       '&::placeholder': {
-                        color: '#5f6368',
+                        color: 'rgba(255, 255, 255, 0.6)',
                         opacity: 1,
                       },
                     },
@@ -174,12 +171,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <SearchIcon sx={{ color: '#5f6368', fontSize: 20 }} />
+                        <SearchIcon sx={{ fontSize: 20 }} />
                       </InputAdornment>
                     ),
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton size="small" sx={{ color: '#5f6368' }}>
+                        <IconButton size="small">
                           <TuneIcon sx={{ fontSize: 20 }} />
                         </IconButton>
                       </InputAdornment>
@@ -193,9 +190,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <IconButton 
                   size="small" 
                   sx={{ 
-                    color: '#5f6368',
                     '&:hover': {
-                      backgroundColor: '#f1f3f4',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     }
                   }}
                 >
@@ -204,9 +200,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <IconButton 
                   size="small" 
                   sx={{ 
-                    color: '#5f6368',
                     '&:hover': {
-                      backgroundColor: '#f1f3f4',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     }
                   }}
                 >
@@ -215,9 +210,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <IconButton 
                   size="small" 
                   sx={{ 
-                    color: '#5f6368',
                     '&:hover': {
-                      backgroundColor: '#f1f3f4',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     }
                   }}
                 >
@@ -231,9 +225,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   aria-haspopup="true"
                   onClick={handleProfileMenuOpen}
                   sx={{ 
-                    color: '#5f6368',
                     '&:hover': {
-                      backgroundColor: '#f1f3f4',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     }
                   }}
                 >
@@ -241,7 +234,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     sx={{ 
                       width: 32, 
                       height: 32,
-                      backgroundColor: '#1a73e8',
+                      backgroundColor: '#64b5f6',
                       fontSize: '14px',
                       fontWeight: 500,
                       fontFamily: '"Google Sans", "Roboto", "Arial", sans-serif'
@@ -264,18 +257,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               sx: {
                 mt: 1,
                 minWidth: 200,
-                boxShadow: '0 2px 10px 0 rgba(70,70,70,0.2)',
+                boxShadow: '0 2px 10px 0 rgba(0, 0, 0, 0.5)',
                 borderRadius: '8px',
               }
             }}
           >
             <MenuItem>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}>
-                <Avatar sx={{ width: 40, height: 40, backgroundColor: '#1a73e8' }}>
+                <Avatar sx={{ width: 40, height: 40, backgroundColor: '#64b5f6' }}>
                   {user?.first_name?.[0] || user?.email?.[0] || 'U'}
                 </Avatar>
                 <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#202124' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
                     {user?.first_name} {user?.last_name}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
@@ -284,8 +277,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Box>
               </Box>
             </MenuItem>
-            <MenuItem onClick={handleLogout} sx={{ color: '#5f6368' }}>
-              <IconButton size="small" sx={{ mr: 1, color: '#5f6368' }}>
+            <MenuItem onClick={handleLogout}>
+              <IconButton size="small" sx={{ mr: 1 }}>
                 <LogoutIcon fontSize="small" />
               </IconButton>
               Sign out

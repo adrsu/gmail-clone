@@ -122,9 +122,9 @@ async def send_test_email():
             handler_name = "AWS SES SMTP"
         
         # Test email content
-        subject = f"Test Email from Gmail Clone - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
+        subject = f"Test Email from 27send - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
         body = f"""
-        This is a test email from your Gmail Clone application.
+        This is a test email from your 27send application.
         
         Handler: {handler_name}
         Domain: {settings.AWS_SES_VERIFIED_DOMAIN}
@@ -214,7 +214,7 @@ async def main():
     print("🚀 Next steps:")
     print("   1. Start your email service: python -m email_service.main")
     print("   2. Test endpoints: http://localhost:8001/aws-ses/status")
-    print("   3. Send emails through your Gmail clone interface")
+    print("   3. Send emails through your 27send interface")
 
 
 if __name__ == "__main__":

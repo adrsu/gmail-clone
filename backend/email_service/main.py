@@ -137,9 +137,9 @@ async def test_email_handler(
             from_email = f"{user_id}@{settings.AWS_SES_VERIFIED_DOMAIN}"
         
         # Test email content
-        subject = f"Test Email from Gmail Clone - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
+        subject = f"Test Email from 27send - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
         body = f"""
-        This is a test email from your Gmail Clone application.
+        This is a test email from your 27send application.
         
         Handler Type: {type(email_handler).__name__}
         Sent At: {datetime.utcnow().isoformat()}

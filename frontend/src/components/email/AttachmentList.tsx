@@ -151,7 +151,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
         </Alert>
       )}
       
-      <Typography variant="body2" sx={{ color: '#666', mb: 1, fontSize: '12px' }}>
+      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, fontSize: '12px' }}>
         Attachments ({attachments.length}):
       </Typography>
       
@@ -165,9 +165,9 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
-                  border: '1px solid #e8eaed',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
                   '&:hover': {
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
                   }
                 }}
               >
@@ -180,7 +180,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                     alt={attachment.filename}
                     sx={{
                       objectFit: 'cover',
-                      backgroundColor: '#f5f5f5',
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
                     }}
                     onError={handleImageError}
                   />
@@ -193,10 +193,10 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    backgroundColor: '#f8f9fa',
-                    borderBottom: '1px solid #e8eaed',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                   }}>
-                    <Typography variant="h3" sx={{ color: '#666' }}>
+                    <Typography variant="h3" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                       {attachmentService.getFileIcon(attachment.filename)}
                     </Typography>
                   </Box>
@@ -212,6 +212,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                       mb: 0.5,
+                      color: '#ffffff',
                     }}
                     title={attachment.filename}
                   >
@@ -222,7 +223,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                     variant="body2"
                     sx={{
                       fontSize: '11px',
-                      color: '#666',
+                      color: 'rgba(255, 255, 255, 0.6)',
                       mb: 1,
                     }}
                   >
@@ -240,8 +241,8 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                           onClick={() => window.open(getPreviewUrl(attachment), '_blank')}
                           sx={{
                             p: 0.5,
-                            color: '#666',
-                            '&:hover': { backgroundColor: '#e8eaed' },
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                           }}
                         >
                           <ViewIcon fontSize="small" />
@@ -255,8 +256,8 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                           disabled={downloading === attachment.id}
                           sx={{
                             p: 0.5,
-                            color: '#666',
-                            '&:hover': { backgroundColor: '#e8eaed' },
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                           }}
                         >
                           {downloading === attachment.id ? (
@@ -275,8 +276,8 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                             disabled={deleting === attachment.id}
                             sx={{
                               p: 0.5,
-                              color: '#666',
-                              '&:hover': { backgroundColor: '#e8eaed' },
+                              color: 'rgba(255, 255, 255, 0.6)',
+                              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                             }}
                           >
                             {deleting === attachment.id ? (
@@ -305,16 +306,16 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 p: compact ? 0.5 : 1,
-                border: '1px solid #e8eaed',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: 1,
-                backgroundColor: '#f8f9fa',
+                backgroundColor: 'rgba(0, 0, 0, 0.3)',
                 fontSize: '12px',
                 position: 'relative',
               }}
             >
               {/* File info */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                <Typography variant="body2" sx={{ fontSize: '16px' }}>
+                <Typography variant="body2" sx={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.8)' }}>
                   {attachmentService.getFileIcon(attachment.filename)}
                 </Typography>
                 
@@ -327,6 +328,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
+                      color: '#ffffff',
                     }}
                   >
                     {attachment.filename}
@@ -336,7 +338,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                     variant="body2"
                     sx={{
                       fontSize: '11px',
-                      color: '#666',
+                      color: 'rgba(255, 255, 255, 0.6)',
                     }}
                   >
                     {attachmentService.formatFileSize(attachment.size)}
@@ -355,8 +357,8 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                       onClick={() => window.open(getPreviewUrl(attachment), '_blank')}
                       sx={{
                         p: 0.5,
-                        color: '#666',
-                        '&:hover': { backgroundColor: '#e8eaed' },
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                       }}
                     >
                       <ViewIcon fontSize="small" />
@@ -370,8 +372,8 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                       disabled={downloading === attachment.id}
                       sx={{
                         p: 0.5,
-                        color: '#666',
-                        '&:hover': { backgroundColor: '#e8eaed' },
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                       }}
                     >
                       {downloading === attachment.id ? (
@@ -390,8 +392,8 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
                         disabled={deleting === attachment.id}
                         sx={{
                           p: 0.5,
-                          color: '#666',
-                          '&:hover': { backgroundColor: '#e8eaed' },
+                          color: 'rgba(255, 255, 255, 0.6)',
+                          '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                         }}
                       >
                         {deleting === attachment.id ? (

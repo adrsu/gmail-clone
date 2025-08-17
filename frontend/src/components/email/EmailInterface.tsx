@@ -841,12 +841,13 @@ const EmailInterface: React.FC = () => {
       <Box
         sx={{
           width: sidebarCollapsed ? 72 : 256,
-          backgroundColor: '#f6f8fa',
-          borderRight: '1px solid #e8eaed',
+          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          borderRight: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0,
           transition: 'width 0.2s ease-in-out',
+          backdropFilter: 'blur(10px)',
         }}
       >
         {/* Compose Button */}
@@ -857,17 +858,17 @@ const EmailInterface: React.FC = () => {
             startIcon={!sidebarCollapsed && <AddIcon />}
             onClick={() => setComposeOpen(true)}
             sx={{
-              backgroundColor: '#c2e7ff',
-              color: '#001d35',
+              backgroundColor: 'rgba(100, 181, 246, 0.2)',
+              color: '#ffffff',
               textTransform: 'none',
               borderRadius: '16px',
               height: 48,
               fontSize: '14px',
               fontWeight: 500,
-              boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)',
+              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15)',
               '&:hover': {
-                backgroundColor: '#a8dadc',
-                boxShadow: '0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15)',
+                backgroundColor: 'rgba(100, 181, 246, 0.3)',
+                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15)',
               },
               minWidth: sidebarCollapsed ? 48 : 'auto',
               justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
@@ -892,63 +893,63 @@ const EmailInterface: React.FC = () => {
                     minWidth: sidebarCollapsed ? 48 : 'auto',
                     justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
                     '&.Mui-selected': {
-                      backgroundColor: '#d3e3fd',
+                      backgroundColor: 'rgba(100, 181, 246, 0.2)',
                       '&:hover': {
-                        backgroundColor: '#c2d7f5',
+                        backgroundColor: 'rgba(100, 181, 246, 0.3)',
                       },
                     },
                     '&:hover': {
-                      backgroundColor: '#f1f3f4',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     },
                   }}
                 >
-                                     <ListItemIcon sx={{ 
-                     minWidth: sidebarCollapsed ? 24 : 40, 
-                     color: currentFolder === folder.id ? '#202124' : '#5f6368',
-                     justifyContent: 'center',
-                     fontSize: sidebarCollapsed ? '18px' : '18px'
-                   }}>
+                  <ListItemIcon sx={{ 
+                    minWidth: sidebarCollapsed ? 24 : 40, 
+                    color: currentFolder === folder.id ? '#ffffff' : 'rgba(255, 255, 255, 0.8)',
+                    justifyContent: 'center',
+                    fontSize: sidebarCollapsed ? '18px' : '18px'
+                  }}>
                     {getFolderIcon(folder.icon)}
                   </ListItemIcon>
                   {!sidebarCollapsed && (
                     <>
                       <ListItemText 
                         primary={folder.name}
-                                                 primaryTypographyProps={{
-                           fontSize: '14px',
-                           fontWeight: currentFolder === folder.id ? 600 : 400,
-                           color: currentFolder === folder.id ? '#202124' : '#202124',
-                         }}
+                        primaryTypographyProps={{
+                          fontSize: '14px',
+                          fontWeight: currentFolder === folder.id ? 600 : 400,
+                          color: currentFolder === folder.id ? '#ffffff' : 'rgba(255, 255, 255, 0.8)',
+                        }}
                       />
-                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                         {/* Total email count - only show if > 0 */}
-                         {folder.email_count > 0 && (
-                           <Typography
-                             variant="body2"
-                             sx={{
-                               fontSize: '12px',
-                               color: currentFolder === folder.id ? '#202124' : '#5f6368',
-                               fontWeight: currentFolder === folder.id ? 600 : 400,
-                             }}
-                           >
-                             {folder.email_count.toLocaleString()}
-                           </Typography>
-                         )}
-                         {/* Unread count badge */}
-                         {folder.unread_count > 0 && (
-                           <Badge 
-                             badgeContent={folder.unread_count} 
-                             color="primary"
-                             sx={{
-                               '& .MuiBadge-badge': {
-                                 backgroundColor: '#1a73e8',
-                                 fontSize: '12px',
-                                 fontWeight: 500,
-                               }
-                             }}
-                           />
-                         )}
-                       </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {/* Total email count - only show if > 0 */}
+                        {folder.email_count > 0 && (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontSize: '12px',
+                              color: currentFolder === folder.id ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
+                              fontWeight: currentFolder === folder.id ? 600 : 400,
+                            }}
+                          >
+                            {folder.email_count.toLocaleString()}
+                          </Typography>
+                        )}
+                        {/* Unread count badge */}
+                        {folder.unread_count > 0 && (
+                          <Badge 
+                            badgeContent={folder.unread_count} 
+                            color="primary"
+                            sx={{
+                              '& .MuiBadge-badge': {
+                                backgroundColor: '#64b5f6',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                              }
+                            }}
+                          />
+                        )}
+                      </Box>
                     </>
                   )}
                 </ListItemButton>
@@ -965,13 +966,13 @@ const EmailInterface: React.FC = () => {
                   minWidth: sidebarCollapsed ? 48 : 'auto',
                   justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
                   '&:hover': {
-                    backgroundColor: '#f1f3f4',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   },
                 }}
               >
                 <ListItemIcon sx={{ 
                   minWidth: sidebarCollapsed ? 24 : 40, 
-                  color: '#5f6368',
+                  color: 'rgba(255, 255, 255, 0.8)',
                   justifyContent: 'center',
                   fontSize: sidebarCollapsed ? '20px' : '18px'
                 }}>
@@ -983,7 +984,7 @@ const EmailInterface: React.FC = () => {
                     primaryTypographyProps={{
                       fontSize: '14px',
                       fontWeight: 400,
-                      color: '#202124',
+                      color: 'rgba(255, 255, 255, 0.8)',
                     }}
                   />
                 )}
@@ -993,285 +994,275 @@ const EmailInterface: React.FC = () => {
         </Box>
       </Box>
 
-             {/* Main Content Area */}
-       <Box sx={{ 
-         flexGrow: 1, 
-         display: 'flex', 
-         flexDirection: 'column',
-         minWidth: 0, // Prevents flex item from overflowing
-         height: '100%',
-       }}>
-         {viewEmail ? (
-           // Email View Mode
-           <EmailView
-             email={viewEmail}
-             onClose={() => setViewEmail(null)}
-             onReply={handleReplyToEmail}
-             onForward={handleForwardEmail}
-             onStarToggle={handleStarToggle}
-             onDelete={handleDeleteEmail}
-             onMarkAsRead={handleMarkAsRead}
-             currentIndex={emails.findIndex(e => e.id === viewEmail.id)}
-             totalEmails={totalEmails}
-             onPrevious={() => {
-               const currentIndex = emails.findIndex(e => e.id === viewEmail.id);
-               if (currentIndex > 0) {
-                 setViewEmail(emails[currentIndex - 1]);
-               }
-             }}
-             onNext={() => {
-               const currentIndex = emails.findIndex(e => e.id === viewEmail.id);
-               if (currentIndex < emails.length - 1) {
-                 setViewEmail(emails[currentIndex + 1]);
-               }
-             }}
-             userId={user?.id || ''}
-           />
-         ) : (
-           // Email List Mode
-           <>
-             {/* Email List Toolbar - Gmail Style */}
-             <Box sx={{ 
-               borderBottom: '1px solid #e8eaed',
-               backgroundColor: '#fff',
-               px: 2,
-               py: 1,
-               display: 'flex',
-               alignItems: 'center',
-               gap: 1,
-               minHeight: 48,
-               flexShrink: 0, // Prevents toolbar from shrinking
-             }}>
-                               {/* Checkbox with dropdown - Gmail positioning */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                  <Checkbox
-                    checked={selectedEmails.length === emails.length && emails.length > 0}
-                    indeterminate={selectedEmails.length > 0 && selectedEmails.length < emails.length}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedEmails(emails.map(email => email.id));
-                      } else {
-                        setSelectedEmails([]);
-                      }
-                    }}
-                    sx={{ 
-                      color: '#5f6368',
-                      padding: '8px',
-                      '&.Mui-checked': {
-                        color: '#1a73e8',
-                      }
-                    }}
-                  />
-                  <IconButton 
-                    onClick={handleSelectionMenuOpen}
-                    size="small" 
-                    sx={{ 
-                      color: '#5f6368', 
-                      padding: '4px',
-                      marginLeft: '-4px',
-                      marginRight: '4px'
-                    }}
-                  >
-                    <ArrowDownIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Box>
-
-                {/* Selection dropdown menu */}
-                <Menu
-                  anchorEl={selectionMenuAnchor}
-                  open={Boolean(selectionMenuAnchor)}
-                  onClose={handleSelectionMenuClose}
-                  anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'left',
+      {/* Main Content Area */}
+      <Box sx={{ 
+        flexGrow: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        minWidth: 0, // Prevents flex item from overflowing
+        height: '100%',
+      }}>
+        {viewEmail ? (
+          // Email View Mode
+          <EmailView
+            email={viewEmail}
+            onClose={() => setViewEmail(null)}
+            onReply={handleReplyToEmail}
+            onForward={handleForwardEmail}
+            onStarToggle={handleStarToggle}
+            onDelete={handleDeleteEmail}
+            onMarkAsRead={handleMarkAsRead}
+            currentIndex={emails.findIndex(e => e.id === viewEmail.id)}
+            totalEmails={totalEmails}
+            onPrevious={() => {
+              const currentIndex = emails.findIndex(e => e.id === viewEmail.id);
+              if (currentIndex > 0) {
+                setViewEmail(emails[currentIndex - 1]);
+              }
+            }}
+            onNext={() => {
+              const currentIndex = emails.findIndex(e => e.id === viewEmail.id);
+              if (currentIndex < emails.length - 1) {
+                setViewEmail(emails[currentIndex + 1]);
+              }
+            }}
+            userId={user?.id || ''}
+          />
+        ) : (
+          // Email List Mode
+          <>
+            {/* Email List Toolbar - Gmail Style */}
+            <Box sx={{ 
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: 'rgba(0, 0, 0, 0.4)',
+              px: 2,
+              py: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              minHeight: 48,
+              flexShrink: 0, // Prevents toolbar from shrinking
+              backdropFilter: 'blur(10px)',
+            }}>
+              {/* Checkbox with dropdown - Gmail positioning */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                <Checkbox
+                  checked={selectedEmails.length === emails.length && emails.length > 0}
+                  indeterminate={selectedEmails.length > 0 && selectedEmails.length < emails.length}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedEmails(emails.map(email => email.id));
+                    } else {
+                      setSelectedEmails([]);
+                    }
                   }}
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'left',
+                  sx={{ 
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    padding: '8px',
+                    '&.Mui-checked': {
+                      color: '#64b5f6',
+                    }
+                  }}
+                />
+                <IconButton 
+                  onClick={handleSelectionMenuOpen}
+                  size="small" 
+                  sx={{ 
+                    padding: '4px',
+                    marginLeft: '-4px',
+                    marginRight: '4px'
                   }}
                 >
-                  <MenuItem onClick={handleSelectAll}>All</MenuItem>
-                  <MenuItem onClick={handleSelectNone}>None</MenuItem>
-                  <MenuItem onClick={handleSelectRead}>Read</MenuItem>
-                  <MenuItem onClick={handleSelectUnread}>Unread</MenuItem>
-                  <MenuItem onClick={handleSelectStarred}>Starred</MenuItem>
-                  <MenuItem onClick={handleSelectUnstarred}>Unstarred</MenuItem>
-                                </Menu>
+                  <ArrowDownIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Box>
 
-                                 {/* Bulk action buttons - only show when emails are selected */}
-                 {selectedEmails.length > 0 && (
-                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
-                     <Tooltip title="Report spam">
-                       <IconButton 
-                         onClick={() => handleBulkReportSpam()}
-                         size="small" 
-                         sx={{ color: '#5f6368' }}
-                       >
-                         <SpamIcon />
-                       </IconButton>
-                     </Tooltip>
-                     {(() => {
-                       // Check if all selected emails are read or all are unread
-                       const selectedEmailObjects = emails.filter(email => selectedEmails.includes(email.id));
-                       const allRead = selectedEmailObjects.every(email => email.is_read);
-                       const allUnread = selectedEmailObjects.every(email => !email.is_read);
-                       
-                       // Show "Mark as read" only when there are unread emails (mixed or all unread)
-                       // Show "Mark as unread" only when there are read emails (mixed or all read)
-                       if (allRead) {
-                         // Only read emails - show "Mark as unread"
-                         return (
-                           <Tooltip title="Mark as unread">
-                             <IconButton 
-                               onClick={() => handleBulkMarkAsRead(false)}
-                               size="small" 
-                               sx={{ color: '#5f6368' }}
-                             >
-                               <MarkEmailUnreadIcon />
-                             </IconButton>
-                           </Tooltip>
-                         );
-                       } else if (allUnread) {
-                         // Only unread emails - show "Mark as read"
-                         return (
-                           <Tooltip title="Mark as read">
-                             <IconButton 
-                               onClick={() => handleBulkMarkAsRead(true)}
-                               size="small" 
-                               sx={{ color: '#5f6368' }}
-                             >
-                               <MarkEmailReadIcon />
-                             </IconButton>
-                           </Tooltip>
-                         );
-                       } else {
-                         // Mixed selection (both read and unread) - show both options
-                         return (
-                           <>
-                             <Tooltip title="Mark as read">
-                               <IconButton 
-                                 onClick={() => handleBulkMarkAsRead(true)}
-                                 size="small" 
-                                 sx={{ color: '#5f6368' }}
-                               >
-                                 <MarkEmailReadIcon />
-                               </IconButton>
-                             </Tooltip>
-                             <Tooltip title="Mark as unread">
-                               <IconButton 
-                                 onClick={() => handleBulkMarkAsRead(false)}
-                                 size="small" 
-                                 sx={{ color: '#5f6368' }}
-                               >
-                                 <MarkEmailUnreadIcon />
-                               </IconButton>
-                             </Tooltip>
-                           </>
-                         );
-                       }
-                     })()}
-                     <Tooltip title="Delete">
-                       <IconButton 
-                         onClick={handleBulkDelete}
-                         size="small" 
-                         sx={{ color: '#5f6368' }}
-                       >
-                         <DeleteIcon />
-                       </IconButton>
-                     </Tooltip>
-                   </Box>
-                 )}
+              {/* Selection dropdown menu */}
+              <Menu
+                anchorEl={selectionMenuAnchor}
+                open={Boolean(selectionMenuAnchor)}
+                onClose={handleSelectionMenuClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'left',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'left',
+                }}
+              >
+                <MenuItem onClick={handleSelectAll}>All</MenuItem>
+                <MenuItem onClick={handleSelectNone}>None</MenuItem>
+                <MenuItem onClick={handleSelectRead}>Read</MenuItem>
+                <MenuItem onClick={handleSelectUnread}>Unread</MenuItem>
+                <MenuItem onClick={handleSelectStarred}>Starred</MenuItem>
+                <MenuItem onClick={handleSelectUnstarred}>Unstarred</MenuItem>
+              </Menu>
 
-                                   {/* Refresh button - only show when no emails are selected */}
-                  {selectedEmails.length === 0 && (
+              {/* Bulk action buttons - only show when emails are selected */}
+              {selectedEmails.length > 0 && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                  <Tooltip title="Report spam">
                     <IconButton 
-                      onClick={() => loadEmails(true)} 
-                      disabled={loading} 
-                      size="small" 
-                      sx={{ 
-                        color: '#5f6368',
-                        padding: '8px'
-                      }}
+                      onClick={() => handleBulkReportSpam()}
+                      size="small"
                     >
-                      <RefreshIcon />
+                      <SpamIcon />
                     </IconButton>
-                  )}
+                  </Tooltip>
+                  {(() => {
+                    // Check if all selected emails are read or all are unread
+                    const selectedEmailObjects = emails.filter(email => selectedEmails.includes(email.id));
+                    const allRead = selectedEmailObjects.every(email => email.is_read);
+                    const allUnread = selectedEmailObjects.every(email => !email.is_read);
+                    
+                    // Show "Mark as read" only when there are unread emails (mixed or all unread)
+                    // Show "Mark as unread" only when there are read emails (mixed or all read)
+                    if (allRead) {
+                      // Only read emails - show "Mark as unread"
+                      return (
+                        <Tooltip title="Mark as unread">
+                          <IconButton 
+                            onClick={() => handleBulkMarkAsRead(false)}
+                            size="small"
+                          >
+                            <MarkEmailUnreadIcon />
+                          </IconButton>
+                        </Tooltip>
+                      );
+                    } else if (allUnread) {
+                      // Only unread emails - show "Mark as read"
+                      return (
+                        <Tooltip title="Mark as read">
+                          <IconButton 
+                            onClick={() => handleBulkMarkAsRead(true)}
+                            size="small"
+                          >
+                            <MarkEmailReadIcon />
+                          </IconButton>
+                        </Tooltip>
+                      );
+                    } else {
+                      // Mixed selection (both read and unread) - show both options
+                      return (
+                        <>
+                          <Tooltip title="Mark as read">
+                            <IconButton 
+                              onClick={() => handleBulkMarkAsRead(true)}
+                              size="small"
+                            >
+                              <MarkEmailReadIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Mark as unread">
+                            <IconButton 
+                              onClick={() => handleBulkMarkAsRead(false)}
+                              size="small"
+                            >
+                              <MarkEmailUnreadIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      );
+                    }
+                  })()}
+                  <Tooltip title="Delete">
+                    <IconButton 
+                      onClick={handleBulkDelete}
+                      size="small"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
 
-                {/* More options - only show when no emails are selected */}
-                {selectedEmails.length === 0 && (
-                  <IconButton 
-                    size="small" 
-                    sx={{ 
-                      color: '#5f6368',
-                      padding: '8px'
-                    }}
-                  >
-                    <MoreIcon />
-                  </IconButton>
-                )}
-               
-               <Box sx={{ flexGrow: 1 }} />
-               
-               {/* Pagination text */}
-               <Typography variant="body2" color="text.secondary" sx={{ mr: 1, fontSize: '13px', fontWeight: 500 }}>
-                 {totalEmails > 0 ? `${(currentPage - 1) * limit + 1}-${Math.min(currentPage * limit, totalEmails)} of ${totalEmails.toLocaleString()}` : '0 of 0'}
-               </Typography>
-               
-               {/* Navigation arrows */}
-               <IconButton 
-                 size="small" 
-                 disabled={currentPage === 1} 
-                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                 sx={{ color: '#5f6368' }}
-               >
-                 <ArrowLeftIcon />
-               </IconButton>
-               <IconButton 
-                 size="small" 
-                 disabled={currentPage >= totalPages} 
-                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                 sx={{ color: '#5f6368' }}
-               >
-                 <ArrowRightIcon />
-               </IconButton>
-             </Box>
+              {/* Refresh button - only show when no emails are selected */}
+              {selectedEmails.length === 0 && (
+                <IconButton 
+                  onClick={() => loadEmails(true)} 
+                  disabled={loading} 
+                  size="small" 
+                  sx={{ 
+                    padding: '8px'
+                  }}
+                >
+                  <RefreshIcon />
+                </IconButton>
+              )}
 
-             {/* Email List Container */}
-             <Box sx={{ 
-               flexGrow: 1, 
-               overflow: 'hidden', // Changed from 'auto' to 'hidden'
-               backgroundColor: '#fff',
-               display: 'flex',
-               flexDirection: 'column',
-             }}>
-               {error && (
-                 <Alert severity="error" sx={{ m: 2, flexShrink: 0 }}>
-                   {error}
-                 </Alert>
-               )}
-               
-               {/* Email List - Takes remaining space */}
-               <Box sx={{ 
-                 flexGrow: 1, 
-                 overflow: 'auto',
-                 minHeight: 0, // Important for flex child to shrink properly
-               }}>
-                 <EmailList
-                   emails={emails}
-                   selectedEmails={selectedEmails}
-                   onEmailSelect={handleEmailSelect}
-                   onEmailClick={handleEmailClick}
-                   onReplyToEmail={handleReplyToEmail}
-                   onStarToggle={handleStarToggle}
-                   onDeleteEmail={handleDeleteEmail}
-                   onMarkAsRead={handleMarkAsRead}
-                   loading={loading}
-                 />
-               </Box>
-             </Box>
-           </>
-         )}
-       </Box>
+              {/* More options - only show when no emails are selected */}
+              {selectedEmails.length === 0 && (
+                <IconButton 
+                  size="small" 
+                  sx={{ 
+                    padding: '8px'
+                  }}
+                >
+                  <MoreIcon />
+                </IconButton>
+              )}
+             
+              <Box sx={{ flexGrow: 1 }} />
+             
+              {/* Pagination text */}
+              <Typography variant="body2" color="text.secondary" sx={{ mr: 1, fontSize: '13px', fontWeight: 500 }}>
+                {totalEmails > 0 ? `${(currentPage - 1) * limit + 1}-${Math.min(currentPage * limit, totalEmails)} of ${totalEmails.toLocaleString()}` : '0 of 0'}
+              </Typography>
+             
+              {/* Navigation arrows */}
+              <IconButton 
+                size="small" 
+                disabled={currentPage === 1} 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              >
+                <ArrowLeftIcon />
+              </IconButton>
+              <IconButton 
+                size="small" 
+                disabled={currentPage >= totalPages} 
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              >
+                <ArrowRightIcon />
+              </IconButton>
+            </Box>
+
+            {/* Email List Container */}
+            <Box sx={{ 
+              flexGrow: 1, 
+              overflow: 'hidden', // Changed from 'auto' to 'hidden'
+              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+              {error && (
+                <Alert severity="error" sx={{ m: 2, flexShrink: 0 }}>
+                  {error}
+                </Alert>
+              )}
+             
+              {/* Email List - Takes remaining space */}
+              <Box sx={{ 
+                flexGrow: 1, 
+                overflow: 'auto',
+                minHeight: 0, // Important for flex child to shrink properly
+              }}>
+                <EmailList
+                  emails={emails}
+                  selectedEmails={selectedEmails}
+                  onEmailSelect={handleEmailSelect}
+                  onEmailClick={handleEmailClick}
+                  onReplyToEmail={handleReplyToEmail}
+                  onStarToggle={handleStarToggle}
+                  onDeleteEmail={handleDeleteEmail}
+                  onMarkAsRead={handleMarkAsRead}
+                  loading={loading}
+                />
+              </Box>
+            </Box>
+          </>
+        )}
+      </Box>
 
       {/* Compose Dialog */}
              <ComposeEmail

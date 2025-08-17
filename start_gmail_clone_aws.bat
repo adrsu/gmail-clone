@@ -1,6 +1,6 @@
 @echo off
 echo ===================================
-echo    Gmail Clone with AWS SES
+echo    27send with AWS SES
 echo ===================================
 echo.
 
@@ -9,11 +9,11 @@ cd backend
 python test_aws_ses_integration.py
 
 echo.
-echo Starting Gmail Clone services...
+echo Starting 27send services...
 echo.
 
 echo Starting integrated server (includes email server + AWS SES)...
-start "Gmail Clone Server" cmd /k "python run_integrated_server.py"
+start "27send Server" cmd /k "python run_integrated_server.py"
 
 echo.
 echo Services starting...
@@ -29,10 +29,10 @@ echo.
 
 echo Starting frontend...
 cd ..\frontend
-start "Gmail Clone Frontend" cmd /k "npm start"
+start "27send Frontend" cmd /k "npm start"
 
 echo.
-echo Gmail Clone with AWS SES is starting...
+echo 27send with AWS SES is starting...
 echo Frontend will be available at: http://localhost:3000
 echo.
 pause

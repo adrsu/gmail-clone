@@ -118,22 +118,22 @@ const EmailList: React.FC<EmailListProps> = ({
   }
 
   return (
-    <List sx={{ width: '100%', bgcolor: 'background.paper', py: 0 }}>
+    <List sx={{ width: '100%', bgcolor: 'transparent', py: 0 }}>
       {emails.map((email, index) => (
         <React.Fragment key={email.id}>
           <Tooltip title={`Click to ${email.status === 'draft' ? 'edit' : 'view'} email`}>
             <ListItem
               sx={{
-                backgroundColor: email.is_read ? 'background.paper' : '#f2f6fc',
+                backgroundColor: email.is_read ? 'rgba(0, 0, 0, 0.2)' : 'rgba(100, 181, 246, 0.1)',
                 '&:hover': {
-                  backgroundColor: '#f8f9fa',
-                  boxShadow: 'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  boxShadow: 'inset 1px 0 0 rgba(255, 255, 255, 0.1), inset -1px 0 0 rgba(255, 255, 255, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15)',
                 },
                 cursor: 'pointer',
                 px: 0,
                 py: 0,
                 minHeight: 40,
-                borderBottom: '1px solid #f1f3f4',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
               }}
               onClick={() => onEmailClick(email)}
             >
@@ -147,9 +147,9 @@ const EmailList: React.FC<EmailListProps> = ({
                 }}
                 onClick={(e) => e.stopPropagation()}
                 sx={{ 
-                  color: '#5f6368',
+                  color: 'rgba(255, 255, 255, 0.6)',
                   '&.Mui-checked': {
-                    color: '#1a73e8',
+                    color: '#64b5f6',
                   }
                 }}
               />
@@ -164,9 +164,9 @@ const EmailList: React.FC<EmailListProps> = ({
                 }}
                 size="small"
                 sx={{ 
-                  color: email.is_starred ? '#f4b400' : '#5f6368',
+                  color: email.is_starred ? '#f4b400' : 'rgba(255, 255, 255, 0.6)',
                   '&:hover': {
-                    color: email.is_starred ? '#f4b400' : '#1a73e8',
+                    color: email.is_starred ? '#f4b400' : '#64b5f6',
                   }
                 }}
               >
@@ -185,7 +185,7 @@ const EmailList: React.FC<EmailListProps> = ({
                       variant="body2"
                       sx={{
                         fontWeight: email.is_read ? 400 : 600,
-                        color: email.is_read ? '#5f6368' : '#202124',
+                        color: email.is_read ? 'rgba(255, 255, 255, 0.7)' : '#ffffff',
                         fontSize: '14px',
                         mr: 2,
                         flexShrink: 0,
@@ -194,53 +194,53 @@ const EmailList: React.FC<EmailListProps> = ({
                       {formatEmailAddress(email.from_address)}
                     </Typography>
                     
-                                         <Typography
-                       variant="body2"
-                       sx={{
-                         fontWeight: email.is_read ? 400 : 600,
-                         color: email.is_read ? '#5f6368' : '#202124',
-                         fontSize: '14px',
-                         overflow: 'hidden',
-                         textOverflow: 'ellipsis',
-                         whiteSpace: 'nowrap',
-                         flexGrow: 1,
-                       }}
-                     >
-                       {email.status === 'draft' && (
-                         <span style={{ 
-                           color: '	#FA8072', 
-                           fontWeight: 600,
-                           marginRight: '4px'
-                         }}>
-                           Draft 
-                         </span>
-                       )}
-                       {/* {email.status === 'sent' && (
-                         <span style={{ 
-                           color: '#34a853', 
-                           fontWeight: 600,
-                           marginRight: '4px'
-                         }}>
-                           [Sent] 
-                         </span>
-                       )} */}
-                       {email.subject} -{' '}
-                       <span style={{ 
-                         fontWeight: 400, 
-                         color: '#5f6368' 
-                       }}>
-                         {truncateText(email.body, 50)}
-                       </span>
-                       {email.attachments.length > 0 && (
-                         <AttachmentIcon sx={{ fontSize: 16, color: '#5f6368', ml: 0.5, verticalAlign: 'middle' }} />
-                       )}
-                     </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: email.is_read ? 400 : 600,
+                        color: email.is_read ? 'rgba(255, 255, 255, 0.7)' : '#ffffff',
+                        fontSize: '14px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        flexGrow: 1,
+                      }}
+                    >
+                      {email.status === 'draft' && (
+                        <span style={{ 
+                          color: '#FA8072', 
+                          fontWeight: 600,
+                          marginRight: '4px'
+                        }}>
+                          Draft 
+                        </span>
+                      )}
+                      {/* {email.status === 'sent' && (
+                        <span style={{ 
+                          color: '#34a853', 
+                          fontWeight: 600,
+                          marginRight: '4px'
+                        }}>
+                          [Sent] 
+                        </span>
+                      )} */}
+                      {email.subject} -{' '}
+                      <span style={{ 
+                        fontWeight: 400, 
+                        color: 'rgba(255, 255, 255, 0.6)' 
+                      }}>
+                        {truncateText(email.body, 50)}
+                      </span>
+                      {email.attachments.length > 0 && (
+                        <AttachmentIcon sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.6)', ml: 0.5, verticalAlign: 'middle' }} />
+                      )}
+                    </Typography>
                   </Box>
                   
                   <Typography
                     variant="body2"
                     sx={{
-                      color: email.is_read ? '#5f6368' : '#202124',
+                      color: email.is_read ? 'rgba(255, 255, 255, 0.6)' : '#ffffff',
                       fontSize: '14px',
                       fontWeight: email.is_read ? 400 : 600,
                       minWidth: 'fit-content',
@@ -270,7 +270,7 @@ const EmailList: React.FC<EmailListProps> = ({
                       onReplyToEmail(email);
                     }}
                     size="small"
-                    sx={{ color: '#5f6368' }}
+                    sx={{ color: 'rgba(255, 255, 255, 0.6)' }}
                   >
                     <ReplyIcon />
                   </IconButton>
@@ -284,7 +284,7 @@ const EmailList: React.FC<EmailListProps> = ({
                     onMarkAsRead(email.id, !email.is_read);
                   }}
                   size="small"
-                  sx={{ color: '#5f6368' }}
+                  sx={{ color: 'rgba(255, 255, 255, 0.6)' }}
                 >
                   {email.is_read ? <MarkUnreadIcon /> : <MarkReadIcon />}
                 </IconButton>
@@ -297,7 +297,7 @@ const EmailList: React.FC<EmailListProps> = ({
                     // TODO: Implement archive functionality
                   }}
                   size="small"
-                  sx={{ color: '#5f6368' }}
+                  sx={{ color: 'rgba(255, 255, 255, 0.6)' }}
                 >
                   <ArchiveIcon />
                 </IconButton>
@@ -310,7 +310,7 @@ const EmailList: React.FC<EmailListProps> = ({
                     onDeleteEmail(email.id);
                   }}
                   size="small"
-                  sx={{ color: '#5f6368' }}
+                  sx={{ color: 'rgba(255, 255, 255, 0.6)' }}
                 >
                   <DeleteIcon />
                 </IconButton>

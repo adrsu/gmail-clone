@@ -123,11 +123,11 @@ const EmailView: React.FC<EmailViewProps> = ({
       height: '100%', 
       display: 'flex', 
       flexDirection: 'column',
-      backgroundColor: '#fff',
+      backgroundColor: 'rgba(0, 0, 0, 0.2)',
     }}>
       {/* Top Navigation Bar */}
       <Box sx={{ 
-        borderBottom: '1px solid #e8eaed',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         px: 2,
         py: 1,
         display: 'flex',
@@ -135,15 +135,17 @@ const EmailView: React.FC<EmailViewProps> = ({
         gap: 1,
         minHeight: 48,
         flexShrink: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(10px)',
       }}>
         {/* Left side actions */}
         <Tooltip title="Back to inbox">
-          <IconButton onClick={onClose} size="small" sx={{ color: '#5f6368' }}>
+          <IconButton onClick={onClose} size="small">
             <ArrowBackIcon />
           </IconButton>
         </Tooltip>
         <Tooltip title="Report spam">
-          <IconButton size="small" sx={{ color: '#5f6368' }}>
+          <IconButton size="small">
             <ReportIcon />
           </IconButton>
         </Tooltip>
@@ -153,8 +155,7 @@ const EmailView: React.FC<EmailViewProps> = ({
               onDelete(email.id);
               onClose(); // Return to email list after deleting
             }}
-            size="small" 
-            sx={{ color: '#5f6368' }}
+            size="small"
           >
             <DeleteIcon />
           </IconButton>
@@ -170,8 +171,7 @@ const EmailView: React.FC<EmailViewProps> = ({
                 onClose();
               }
             }}
-            size="small" 
-            sx={{ color: '#5f6368' }}
+            size="small"
           >
             <MarkEmailUnreadIcon />
           </IconButton>
@@ -188,16 +188,14 @@ const EmailView: React.FC<EmailViewProps> = ({
             <IconButton 
               onClick={onPrevious} 
               disabled={currentIndex === 0}
-              size="small" 
-              sx={{ color: '#5f6368' }}
+              size="small"
             >
               <ChevronLeftIcon />
             </IconButton>
             <IconButton 
               onClick={onNext} 
               disabled={currentIndex === totalEmails - 1}
-              size="small" 
-              sx={{ color: '#5f6368' }}
+              size="small"
             >
               <ChevronRightIcon />
             </IconButton>
@@ -209,15 +207,15 @@ const EmailView: React.FC<EmailViewProps> = ({
       <Box sx={{ flexGrow: 1, overflow: 'auto', px: 3, py: 2 }}>
         {/* Subject and Folder */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, color: '#202124' }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, color: '#ffffff' }}>
             {email.subject}
           </Typography>
           <Chip 
             label="Inbox" 
             size="small" 
             sx={{ 
-              backgroundColor: '#f1f3f4',
-              color: '#5f6368',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              color: 'rgba(255, 255, 255, 0.8)',
               fontSize: '12px',
               height: 24,
             }}
@@ -240,10 +238,10 @@ const EmailView: React.FC<EmailViewProps> = ({
           
           <Box sx={{ flexGrow: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography variant="body1" sx={{ fontWeight: 600, color: '#202124' }}>
+              <Typography variant="body1" sx={{ fontWeight: 600, color: '#ffffff' }}>
                 {getSenderDisplayName()}
               </Typography>
-              <IconButton size="small" sx={{ color: '#5f6368', p: 0.5 }}>
+              <IconButton size="small" sx={{ p: 0.5 }}>
                 <ArrowDownIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Box>
@@ -259,8 +257,7 @@ const EmailView: React.FC<EmailViewProps> = ({
             <Tooltip title={email.is_starred ? "Starred" : "Not starred"}>
               <IconButton 
                 onClick={() => onStarToggle(email.id)}
-                size="small" 
-                sx={{ color: '#5f6368' }}
+                size="small"
               >
                 {email.is_starred ? <StarIcon sx={{ color: '#fbbc04' }} /> : <StarBorderIcon />}
               </IconButton>
@@ -268,8 +265,7 @@ const EmailView: React.FC<EmailViewProps> = ({
             <Tooltip title="Reply">
               <IconButton 
                 onClick={() => onReply(email)}
-                size="small" 
-                sx={{ color: '#5f6368' }}
+                size="small"
               >
                 <ReplyIcon />
               </IconButton>
@@ -285,7 +281,7 @@ const EmailView: React.FC<EmailViewProps> = ({
           <Typography 
             variant="body1" 
             sx={{ 
-              color: '#202124',
+              color: '#ffffff',
               lineHeight: 1.6,
               whiteSpace: 'pre-wrap',
             }}
@@ -294,48 +290,50 @@ const EmailView: React.FC<EmailViewProps> = ({
           </Typography>
         </Box>
 
-                 {/* Attachments */}
-         {email.attachments && email.attachments.length > 0 && (
-           <Box sx={{ mb: 4 }}>
-             {/* <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#202124' }}>
-               Attachments ({email.attachments.length})
-             </Typography> */}
-             <AttachmentList
-               attachments={email.attachments}
-               userId={userId}
-               showActions={true}
-               compact={false}
-               showPreviews={true}
-             />
-           </Box>
-         )}
-         
-         {/* Debug info - remove this after fixing */}
-         {/* <Box sx={{ mb: 4, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-           <Typography variant="body2" sx={{ color: '#666', fontSize: '12px' }}>
-             Debug Info:
-           </Typography>
-           <Typography variant="body2" sx={{ color: '#666', fontSize: '11px', fontFamily: 'monospace' }}>
-             Email ID: {email.id}
-           </Typography>
-           <Typography variant="body2" sx={{ color: '#666', fontSize: '11px', fontFamily: 'monospace' }}>
-             Attachments: {JSON.stringify(email.attachments, null, 2)}
-           </Typography>
-           <Typography variant="body2" sx={{ color: '#666', fontSize: '11px', fontFamily: 'monospace' }}>
-             User ID: {userId}
-           </Typography>
-         </Box> */}
+        {/* Attachments */}
+        {email.attachments && email.attachments.length > 0 && (
+          <Box sx={{ mb: 4 }}>
+            {/* <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#ffffff' }}>
+              Attachments ({email.attachments.length})
+            </Typography> */}
+            <AttachmentList
+              attachments={email.attachments}
+              userId={userId}
+              showActions={true}
+              compact={false}
+              showPreviews={true}
+            />
+          </Box>
+        )}
+        
+        {/* Debug info - remove this after fixing */}
+        {/* <Box sx={{ mb: 4, p: 2, backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 1 }}>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '12px' }}>
+            Debug Info:
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '11px', fontFamily: 'monospace' }}>
+            Email ID: {email.id}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '11px', fontFamily: 'monospace' }}>
+            Attachments: {JSON.stringify(email.attachments, null, 2)}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '11px', fontFamily: 'monospace' }}>
+            User ID: {userId}
+          </Typography>
+        </Box> */}
       </Box>
 
       {/* Bottom Action Buttons */}
       <Box sx={{ 
-        borderTop: '1px solid #e8eaed',
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
         px: 3,
         py: 2,
         display: 'flex',
         alignItems: 'center',
         gap: 2,
         flexShrink: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(10px)',
       }}>
         <Button
           variant="outlined"
@@ -346,11 +344,13 @@ const EmailView: React.FC<EmailViewProps> = ({
             borderRadius: '20px',
             px: 3,
             py: 1,
-            borderColor: '#dadce0',
-            color: '#5f6368',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            color: '#ffffff',
+            background: 'rgba(0, 0, 0, 0.2)',
+            backdropFilter: 'blur(10px)',
             '&:hover': {
-              borderColor: '#5f6368',
-              backgroundColor: '#f8f9fa',
+              borderColor: '#ffffff',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
             },
           }}
         >
@@ -365,11 +365,13 @@ const EmailView: React.FC<EmailViewProps> = ({
             borderRadius: '20px',
             px: 3,
             py: 1,
-            borderColor: '#dadce0',
-            color: '#5f6368',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            color: '#ffffff',
+            background: 'rgba(0, 0, 0, 0.2)',
+            backdropFilter: 'blur(10px)',
             '&:hover': {
-              borderColor: '#5f6368',
-              backgroundColor: '#f8f9fa',
+              borderColor: '#ffffff',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
             },
           }}
         >

@@ -1,4 +1,4 @@
-# Gmail Clone - Comprehensive Mailing Service
+# 27send- Comprehensive Mailing Service
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
@@ -113,7 +113,7 @@ This is a comprehensive mailing service application built with modern technologi
 
 ### **Fully Integrated Email Server**
 
-The Gmail clone now includes a **complete SMTP/IMAP email server** that provides:
+The 27send now includes a **complete SMTP/IMAP email server** that provides:
 
 - **SMTP Server** (Port 2525): Receives incoming emails
 - **IMAP Server** (Port 1143): Provides email access and management

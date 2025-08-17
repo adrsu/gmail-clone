@@ -1,7 +1,7 @@
 {
   "name": "gmail-clone-frontend",
   "version": "1.0.0",
-  "description": "Gmail Clone Frontend",
+  "description": "27send Frontend",
   "main": "index.js",
   "scripts": {
     "start": "react-scripts start",
