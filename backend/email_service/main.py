@@ -14,6 +14,7 @@ from .models import (
 )
 from .database import EmailDatabase
 from .smtp_handler import SMTPHandler
+from .aws_ses_handler import AWSSESHandler, AWSSESSMTPHandler
 from .attachment_handler import attachment_handler
 from shared.config import settings
 from shared.elasticsearch_service import elasticsearch_service
@@ -30,7 +31,20 @@ app.add_middleware(
 )
 
 # Initialize handlers
-smtp_handler = SMTPHandler()
+def get_email_handler():
+    """Get the appropriate email handler based on configuration"""
+    if settings.ENABLE_AWS_SES and settings.PRODUCTION_MODE:
+        print("🔧 Using AWS SES handler for production email sending")
+        return AWSSESHandler()
+    elif settings.ENABLE_AWS_SES:
+        print("🔧 Using AWS SES SMTP handler for email sending")  
+        return AWSSESSMTPHandler()
+    else:
+        print("🔧 Using local SMTP handler for email sending")
+        return SMTPHandler()
+
+# Initialize email handler
+email_handler = get_email_handler()
 
 @app.on_event("startup")
 async def startup_event():
@@ -47,6 +61,115 @@ async def startup_event():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "email-service"}
+
+@app.get("/aws-ses/status")
+async def aws_ses_status():
+    """Get AWS SES configuration and status"""
+    try:
+        if not settings.ENABLE_AWS_SES:
+            return {
+                "enabled": False,
+                "message": "AWS SES is not enabled. Set ENABLE_AWS_SES=true to enable."
+            }
+        
+        # Test AWS SES connection
+        if isinstance(email_handler, AWSSESHandler):
+            test_results = await email_handler.test_connection()
+            config_status = settings.verify_ses_configuration()
+            
+            return {
+                "enabled": True,
+                "handler_type": "AWS SES API",
+                "configuration": config_status,
+                "connection_tests": test_results,
+                "production_ready": settings.is_production_ready()
+            }
+        elif isinstance(email_handler, AWSSESSMTPHandler):
+            test_results = await email_handler.test_connection()
+            
+            return {
+                "enabled": True,
+                "handler_type": "AWS SES SMTP",
+                "smtp_test": test_results,
+                "production_ready": settings.is_production_ready()
+            }
+        else:
+            return {
+                "enabled": False,
+                "handler_type": "Local SMTP",
+                "message": "Using local SMTP handler instead of AWS SES"
+            }
+            
+    except Exception as e:
+        return {
+            "enabled": settings.ENABLE_AWS_SES,
+            "error": str(e),
+            "message": "Failed to get AWS SES status"
+        }
+
+@app.get("/aws-ses/statistics")
+async def aws_ses_statistics():
+    """Get AWS SES sending statistics"""
+    try:
+        if not isinstance(email_handler, AWSSESHandler):
+            return {"error": "AWS SES API handler not enabled"}
+        
+        stats = await email_handler.get_sending_statistics()
+        return stats
+        
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/test-email-handler")
+async def test_email_handler(
+    to_email: str = Query(..., description="Test recipient email"),
+    user_id: str = Query(..., description="User ID")
+):
+    """Test the current email handler configuration"""
+    try:
+        # Get user info for from_address
+        from .database import get_user_by_id
+        user_data = get_user_by_id(user_id)
+        
+        if user_data:
+            from_email = user_data.get("email", f"{user_id}@{settings.AWS_SES_VERIFIED_DOMAIN}")
+        else:
+            from_email = f"{user_id}@{settings.AWS_SES_VERIFIED_DOMAIN}"
+        
+        # Test email content
+        subject = f"Test Email from Gmail Clone - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
+        body = f"""
+        This is a test email from your Gmail Clone application.
+        
+        Handler Type: {type(email_handler).__name__}
+        Sent At: {datetime.utcnow().isoformat()}
+        From User: {user_id}
+        
+        If you receive this email, your email configuration is working correctly!
+        """
+        
+        # Send test email
+        success = await email_handler.send_email(
+            from_email=from_email,
+            to_emails=[to_email],
+            subject=subject,
+            body=body
+        )
+        
+        return {
+            "success": success,
+            "handler_type": type(email_handler).__name__,
+            "from_email": from_email,
+            "to_email": to_email,
+            "message": "Test email sent successfully" if success else "Test email failed to send"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Test email failed with error"
+        }
 
 @app.get("/test-user-lookup/{user_id}")
 async def test_user_lookup(user_id: str):
@@ -193,7 +316,7 @@ async def compose_email(
                     import time
                     smtp_start_time = time.time()
                     
-                    success = await smtp_handler.send_email(
+                    success = await email_handler.send_email(
                         from_email=from_address.email,
                         to_emails=[addr.email for addr in to_addresses],
                         subject=request.subject,
@@ -205,16 +328,16 @@ async def compose_email(
                     )
                     
                     smtp_time = time.time() - smtp_start_time
-                    print(f"📊 SMTP sending took {smtp_time:.2f}s")
+                    handler_type = "AWS SES" if isinstance(email_handler, (AWSSESHandler, AWSSESSMTPHandler)) else "local SMTP"
+                    print(f"📊 {handler_type} sending took {smtp_time:.2f}s")
                     
                     if not success:
                         # Update status back to draft if sending failed
                         await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
                         print(f"❌ Background email sending failed - reverted to draft status")
                     else:
-                        mode = "local SMTP" if settings.development_mode else "external SMTP"
                         recipients = [addr.email for addr in to_addresses]
-                        print(f"✅ Email sent successfully via {mode} to {recipients}")
+                        print(f"✅ Email sent successfully via {handler_type} to {recipients}")
                         
                 except Exception as e:
                     # Update status back to draft if sending failed
@@ -431,7 +554,7 @@ async def update_email(
             if not settings.development_mode:
                 # Production mode - actually send email via SMTP
                 try:
-                    success = await smtp_handler.send_email(
+                    success = await email_handler.send_email(
                         from_email=from_address.email,
                         to_emails=[addr.email for addr in to_addresses],
                         subject=request.subject,
@@ -453,7 +576,7 @@ async def update_email(
             else:
                 # Development mode - send via local SMTP server
                 try:
-                    success = await smtp_handler.send_email(
+                    success = await email_handler.send_email(
                         from_email=from_address.email,
                         to_emails=[addr.email for addr in to_addresses],
                         subject=request.subject,
@@ -521,7 +644,7 @@ async def get_email_count(
 async def test_smtp_connection():
     """Test SMTP connection"""
     try:
-        success = await smtp_handler.test_connection()
+        success = await email_handler.test_connection()
         return {"success": success, "message": "SMTP connection test completed"}
         
     except Exception as e:
