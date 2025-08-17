@@ -220,37 +220,65 @@ class AttachmentHandler:
     
     async def delete_attachment(self, attachment_id: str, user_id: str) -> bool:
         """Delete an attachment"""
+        logger.info(f"🗑️ Attempting to delete attachment: {attachment_id} for user: {user_id}")
+        
         try:
             if self.s3_client and hasattr(settings, 'S3_BUCKET') and settings.S3_BUCKET:
+                logger.info(f"📡 Searching for attachment in S3 bucket: {settings.S3_BUCKET}")
                 # Delete from S3 - we need to list objects to find the one with the attachment_id
                 try:
                     # List objects in the user's attachment folder to find the one with the attachment_id
+                    prefix = f"attachments/{user_id}/{attachment_id}"
+                    logger.info(f"🔍 S3 search prefix: {prefix}")
+                    
                     response = self.s3_client.list_objects_v2(
                         Bucket=settings.S3_BUCKET,
-                        Prefix=f"attachments/{user_id}/{attachment_id}"
+                        Prefix=prefix
                     )
                     
                     if 'Contents' in response and len(response['Contents']) > 0:
                         # Found the object, delete it
                         s3_key = response['Contents'][0]['Key']
+                        logger.info(f"🎯 Found attachment in S3: {s3_key}")
+                        
                         self.s3_client.delete_object(
                             Bucket=settings.S3_BUCKET,
                             Key=s3_key
                         )
+                        logger.info(f"✅ Successfully deleted from S3: {s3_key}")
                         return True
-                    return False
-                except ClientError:
+                    else:
+                        logger.warning(f"❌ Attachment not found in S3: {prefix}")
+                        return False
+                except ClientError as e:
+                    logger.error(f"❌ S3 ClientError deleting attachment: {e}")
                     return False
             else:
+                logger.info(f"📁 Searching for attachment in local storage: {self.upload_dir}/{user_id}")
                 # Delete from local storage
                 user_upload_dir = self.upload_dir / user_id
-                for file_path in user_upload_dir.glob(f"{attachment_id}*"):
+                
+                if not user_upload_dir.exists():
+                    logger.warning(f"❌ User upload directory does not exist: {user_upload_dir}")
+                    return False
+                
+                pattern = f"{attachment_id}*"
+                logger.info(f"🔍 Searching for files matching pattern: {pattern}")
+                
+                matching_files = list(user_upload_dir.glob(pattern))
+                logger.info(f"📋 Found {len(matching_files)} matching files: {[f.name for f in matching_files]}")
+                
+                for file_path in matching_files:
                     if file_path.exists():
+                        logger.info(f"🗑️ Deleting file: {file_path}")
                         file_path.unlink()
+                        logger.info(f"✅ Successfully deleted from local storage: {file_path}")
                         return True
+                
+                logger.warning(f"❌ No matching attachment files found for: {attachment_id}")
             return False
         except Exception as e:
-            logger.error(f"Error deleting attachment: {e}")
+            logger.error(f"❌ Error deleting attachment {attachment_id}: {e}")
             return False
     
     async def get_attachment_content(self, attachment_id: str, user_id: str) -> Optional[bytes]:

@@ -736,17 +736,29 @@ async def delete_attachment(
     attachment_id: str,
     user_id: str = Query(..., description="User ID")
 ):
-    """Delete an attachment"""
+    """Delete an attachment (idempotent - succeeds even if already deleted)"""
+    print(f"🗑️ DELETE attachment request: ID={attachment_id}, User={user_id}")
+    
     try:
         success = await attachment_handler.delete_attachment(attachment_id, user_id)
         if not success:
-            raise HTTPException(status_code=404, detail="Attachment not found")
+            print(f"ℹ️ Attachment not found (possibly already deleted): ID={attachment_id}, User={user_id}")
+            # Return success for idempotent behavior - if it's already gone, that's fine
+            return {
+                "message": "Attachment already deleted or not found", 
+                "attachment_id": attachment_id,
+                "status": "idempotent_success"
+            }
         
-        return {"message": "Attachment deleted successfully"}
-    except HTTPException:
-        raise
+        print(f"✅ Attachment deleted successfully: ID={attachment_id}")
+        return {
+            "message": "Attachment deleted successfully", 
+            "attachment_id": attachment_id,
+            "status": "deleted"
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"❌ Error deleting attachment {attachment_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete attachment: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -111,13 +111,28 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
   };
 
   const handleDelete = async (attachmentId: string) => {
+    if (deleting === attachmentId) {
+      console.log(`⚠️ Delete already in progress for attachment: ${attachmentId}`);
+      return; // Prevent double deletion
+    }
+
     setDeleting(attachmentId);
     setError(null);
     
     try {
-      await attachmentService.deleteAttachment(attachmentId, userId);
-      onDelete?.(attachmentId);
+      // Only call the parent's delete handler - let the parent handle the API call
+      // This prevents double deletion (both here and in ComposeEmail)
+      if (onDelete) {
+        console.log(`🗑️ AttachmentList delegating deletion to parent: ${attachmentId}`);
+        await onDelete(attachmentId);
+        console.log(`✅ AttachmentList: Parent handled deletion successfully: ${attachmentId}`);
+      } else {
+        // Fallback: if no parent handler, handle deletion ourselves
+        console.log(`🗑️ AttachmentList: No parent handler, handling deletion directly: ${attachmentId}`);
+        await attachmentService.deleteAttachment(attachmentId, userId);
+      }
     } catch (err) {
+      console.error(`❌ AttachmentList: Delete failed for ${attachmentId}:`, err);
       setError(`Failed to delete attachment: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setDeleting(null);
