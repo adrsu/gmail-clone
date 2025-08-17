@@ -397,7 +397,7 @@ const LandingPage: React.FC = () => {
                fontWeight: 300
              }}
            >
-             © 2024 Gmail Clone. Built with cutting-edge technology for the future of communication.
+             Made with ❤️ by 27send © 2025
            </Typography>
          </Container>
        </Box>

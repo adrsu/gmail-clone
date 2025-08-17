@@ -156,7 +156,7 @@ const Login: React.FC = () => {
                 fontWeight: 600,
               }}
             >
-              Sign in to Gmail Clone
+              Sign in to 27send
             </Typography>
             <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
               {error && (
