@@ -137,7 +137,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 mx: 'auto',
                 display: 'flex',
                 // justifyContent: 'center',
-                marginLeft: '30px',
+                marginLeft: '82px',
               }}>
                 <TextField
                   fullWidth

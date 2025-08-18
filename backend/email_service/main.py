@@ -77,12 +77,30 @@ async def aws_ses_status():
             test_results = await email_handler.test_connection()
             config_status = settings.verify_ses_configuration()
             
+            # Enhanced production readiness assessment
+            api_ready = settings.is_production_ready()
+            smtp_ready = test_results.get('smtp_test', False)
+            
+            # Determine overall status and provide guidance
+            if api_ready and smtp_ready:
+                production_status = "fully_ready"
+                readiness_message = "✅ Ready for production (both API and SMTP)"
+            elif api_ready and not smtp_ready:
+                production_status = "api_ready"
+                readiness_message = "⚠️ Ready for API sending (SMTP blocked by firewall)"
+            else:
+                production_status = "not_ready"
+                readiness_message = "❌ Not ready for production"
+            
             return {
                 "enabled": True,
                 "handler_type": "AWS SES API",
                 "configuration": config_status,
                 "connection_tests": test_results,
-                "production_ready": settings.is_production_ready()
+                "production_ready": api_ready,
+                "production_status": production_status,
+                "readiness_message": readiness_message,
+                "smtp_available": smtp_ready
             }
         elif isinstance(email_handler, AWSSESSMTPHandler):
             test_results = await email_handler.test_connection()
@@ -316,15 +334,19 @@ async def compose_email(
                     import time
                     smtp_start_time = time.time()
                     
-                    success = await email_handler.send_email(
-                        from_email=from_address.email,
-                        to_emails=[addr.email for addr in to_addresses],
-                        subject=request.subject,
-                        body=request.body,
-                        html_body=request.html_body,
-                        cc_emails=[addr.email for addr in cc_addresses],
-                        bcc_emails=[addr.email for addr in bcc_addresses],
-                        attachments=smtp_attachments
+                    # Add timeout protection to prevent hanging (2 minutes max)
+                    success = await asyncio.wait_for(
+                        email_handler.send_email(
+                            from_email=from_address.email,
+                            to_emails=[addr.email for addr in to_addresses],
+                            subject=request.subject,
+                            body=request.body,
+                            html_body=request.html_body,
+                            cc_emails=[addr.email for addr in cc_addresses],
+                            bcc_emails=[addr.email for addr in bcc_addresses],
+                            attachments=smtp_attachments
+                        ),
+                        timeout=120  # 2 minutes timeout
                     )
                     
                     smtp_time = time.time() - smtp_start_time
@@ -339,6 +361,11 @@ async def compose_email(
                         recipients = [addr.email for addr in to_addresses]
                         print(f"✅ Email sent successfully via {handler_type} to {recipients}")
                         
+                except asyncio.TimeoutError:
+                    # Update status back to draft if sending timed out
+                    await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)
+                    print(f"⏱️ Background email sending timed out after 5 minutes - reverted to draft status")
+                    
                 except Exception as e:
                     # Update status back to draft if sending failed
                     await EmailDatabase.update_email_status(email.id, user_id, EmailStatus.DRAFT)

@@ -202,12 +202,12 @@ class AWSSESHandler:
                         logger.error(f"❌ Error attaching {attachment.get('filename', 'unknown')}: {e}")
                         continue
             
-            # Connect to AWS SES SMTP server
-            server = smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'])
-            server.starttls(context=ssl.create_default_context())
-            
-            # Login with SES SMTP credentials
-            server.login(smtp_config['username'], smtp_config['password'])
+            # Connect to AWS SES SMTP server with multi-port support
+            try:
+                server = await self._create_smtp_connection(smtp_config)
+            except Exception as e:
+                logger.error(f"❌ Failed to establish SMTP connection: {e}")
+                return False
             
             # Send email
             all_recipients = to_emails + (cc_emails or []) + (bcc_emails or [])
@@ -215,8 +215,17 @@ class AWSSESHandler:
             
             logger.info(f"📧 Sending email to {len(all_recipients)} recipients via AWS SES SMTP ({len(email_content)} bytes)")
             
-            result = server.sendmail(from_email, all_recipients, email_content)
-            server.quit()
+            # Send email with timeout protection
+            try:
+                result = server.sendmail(from_email, all_recipients, email_content)
+                server.quit()
+            except Exception as e:
+                logger.error(f"❌ Failed to send email via SMTP: {e}")
+                try:
+                    server.quit()
+                except:
+                    pass
+                return False
             
             # Check result
             if isinstance(result, dict) and len(result) == 0:
@@ -285,11 +294,8 @@ class AWSSESHandler:
         try:
             smtp_config = self.settings.get_smtp_config()
             if smtp_config['username'] and smtp_config['password']:
-                server = smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'])
-                server.starttls(context=ssl.create_default_context())
-                server.login(smtp_config['username'], smtp_config['password'])
-                server.quit()
-                results['smtp_test'] = True
+                print("testing smtp connection...")
+                results['smtp_test'] = await self._test_smtp_connection(smtp_config, results)
             else:
                 results['errors'].append("SMTP credentials not configured")
                 
@@ -297,6 +303,69 @@ class AWSSESHandler:
             results['errors'].append(f"SMTP test failed: {e}")
         
         return results
+    
+    async def _create_smtp_connection(self, smtp_config: Dict[str, Any]):
+        """Create AWS SES SMTP connection using port 465 (SSL)"""
+        try:
+            logger.info(f"🔍 Connecting to AWS SES SMTP on port 465")
+            
+            # Create SSL connection directly to port 465
+            context = ssl.create_default_context()
+            server = smtplib.SMTP_SSL(smtp_config['smtp_server'], 465, timeout=30, context=context)
+            logger.info(f"🔐 Connected with SSL")
+            
+            # Login with SES SMTP credentials
+            logger.info(f"🔑 Authenticating...")
+            server.login(smtp_config['username'], smtp_config['password'])
+            
+            logger.info(f"✅ AWS SES SMTP connection successful")
+            return server
+            
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"❌ AWS SES SMTP authentication failed: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"❌ AWS SES SMTP connection failed: {e}")
+            raise Exception(f"Failed to connect to AWS SES SMTP: {e}")
+    
+    async def _test_smtp_connection(self, smtp_config: Dict[str, Any], results: Dict[str, Any]) -> bool:
+        """Test AWS SES SMTP connection using port 465 (SSL)"""
+        try:
+            print(f"🔍 Testing AWS SES SMTP connection on port 465")
+            
+            # Test SMTP connection directly on port 465
+            context = ssl.create_default_context()
+            server = smtplib.SMTP_SSL(smtp_config['smtp_server'], 465, timeout=30, context=context)
+            print("🔐 Connected with SSL")
+            
+            print("🔑 Attempting login...")
+            server.login(smtp_config['username'], smtp_config['password'])
+            
+            print("✅ SMTP connection successful!")
+            server.quit()
+            return True
+            
+        except smtplib.SMTPAuthenticationError as e:
+            error_msg = f"SMTP Authentication failed: {e}"
+            results['errors'].append(error_msg)
+            print(f"❌ {error_msg}")
+            return False
+            
+        except Exception as e:
+            # If API test passed but SMTP failed, provide specific guidance
+            if results.get('api_test', False):
+                error_msg = (
+                    f"SMTP connection failed: {e}\n"
+                    "⚠️ SMTP port 465 may be blocked by Windows Firewall, but AWS SES API works fine.\n"
+                    "✅ Your system can still send emails via AWS SES API.\n"
+                    "🔧 To enable SMTP: Run as Administrator: New-NetFirewallRule -DisplayName 'AWS SES SMTP' -Direction Outbound -Protocol TCP -RemotePort 465 -Action Allow"
+                )
+            else:
+                error_msg = f"SMTP connection failed: {e}"
+            
+            results['errors'].append(error_msg)
+            print(f"❌ {error_msg}")
+            return False
     
     async def get_sending_statistics(self) -> Dict[str, Any]:
         """Get AWS SES sending statistics"""

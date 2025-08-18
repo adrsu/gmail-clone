@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     # AWS SES Configuration
     AWS_SES_VERIFIED_DOMAIN: Optional[str] = os.getenv('AWS_SES_VERIFIED_DOMAIN')
     AWS_SES_SMTP_SERVER: Optional[str] = os.getenv('AWS_SES_SMTP_SERVER')
-    AWS_SES_SMTP_PORT: int = int(os.getenv('AWS_SES_SMTP_PORT'))
+    # Note: AWS SES SMTP port is hardcoded to 465 (SSL) for Windows compatibility
     AWS_SES_SMTP_USERNAME: Optional[str] = os.getenv('AWS_SES_SMTP_USERNAME')
     AWS_SES_SMTP_PASSWORD: Optional[str] = os.getenv('AWS_SES_SMTP_PASSWORD')
     
@@ -156,13 +156,13 @@ class Settings(BaseSettings):
         )
     
     def get_smtp_config(self) -> Dict[str, Any]:
-        """Get SMTP configuration for AWS SES"""
+        """Get SMTP configuration for AWS SES (uses port 465 SSL)"""
         return {
             'smtp_server': self.AWS_SES_SMTP_SERVER,
-            'smtp_port': self.AWS_SES_SMTP_PORT,
+            'smtp_port': 465,  # Always use port 465 (SSL) for AWS SES - works reliably on Windows
             'username': self.AWS_SES_SMTP_USERNAME,
             'password': self.AWS_SES_SMTP_PASSWORD,
-            'use_tls': True,
+            'use_ssl': True,  # Port 465 uses SSL directly
             'timeout': 30
         }
 
