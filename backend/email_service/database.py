@@ -510,6 +510,8 @@ class EmailDatabase:
             except Exception as e:
                 print(f"Failed to update email in Elasticsearch: {e}")
             
+            # Invalidate cache for this user when email is updated
+            EmailDatabase.invalidate_user_cache(user_id)
             # Update folder counts after updating email
             await EmailDatabase.update_folder_counts(user_id)
             return EmailMessage(**result.data[0])
@@ -529,6 +531,9 @@ class EmailDatabase:
                 await elasticsearch_service.update_email(email_id, result.data[0])
             except Exception as e:
                 print(f"Failed to update email in Elasticsearch: {e}")
+            
+            # Invalidate cache for this user when read status changes
+            EmailDatabase.invalidate_user_cache(user_id)
             return True
         return False
 
@@ -554,6 +559,8 @@ class EmailDatabase:
             except Exception as e:
                 print(f"Failed to update email in Elasticsearch: {e}")
             
+            # Invalidate cache for this user when star status changes
+            EmailDatabase.invalidate_user_cache(user_id)
             # Update folder counts after star toggle
             await EmailDatabase.update_folder_counts(user_id)
             return True
@@ -574,6 +581,8 @@ class EmailDatabase:
             except Exception as e:
                 print(f"Failed to update email in Elasticsearch: {e}")
             
+            # Invalidate cache for this user when email is deleted
+            EmailDatabase.invalidate_user_cache(user_id)
             # Update folder counts after moving to trash
             await EmailDatabase.update_folder_counts(user_id)
             return True
